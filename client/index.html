@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAO</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="particles-canvas"></canvas>
+
+<div id="screen-menu" class="screen active">
+  <div class="menu-container">
+    <div class="menu-card">
+      <h1 class="game-title">MAO</h1>
+      <p class="subtitle">The Hidden Rules Game</p>
+      <div class="input-group">
+        <input type="text" id="nickname-input" placeholder="Enter nickname..." maxlength="16" autocomplete="off">
+      </div>
+      <div class="menu-buttons">
+        <button id="btn-host" class="btn btn-primary">HOST PARTY</button>
+        <button id="btn-join" class="btn btn-secondary">JOIN PARTY</button>
+      </div>
+      <div id="join-section" class="join-section hidden">
+        <div class="input-group">
+          <input type="text" id="code-input" placeholder="Enter 6-digit code..." maxlength="6" autocomplete="off">
+        </div>
+        <button id="btn-join-submit" class="btn btn-primary">JOIN</button>
+      </div>
+      <div id="menu-error" class="error-message hidden"></div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-lobby" class="screen">
+  <div class="lobby-container">
+    <div class="lobby-header">
+      <h2>LOBBY</h2>
+      <div class="room-code-display">
+        <span>ROOM CODE:</span>
+        <span id="room-code" class="code-value"></span>
+      </div>
+      <button id="btn-copy-code" class="btn btn-small">COPY</button>
+    </div>
+    <div class="lobby-players" id="lobby-players"></div>
+    <div class="lobby-actions">
+      <button id="btn-ready" class="btn btn-secondary">READY</button>
+      <button id="btn-start-game" class="btn btn-primary hidden">START GAME</button>
+      <button id="btn-leave-lobby" class="btn btn-danger">LEAVE</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-game" class="screen">
+  <div class="game-top-bar">
+    <div class="game-info">
+      <span class="game-room">ROOM: <span id="game-room-code"></span></span>
+      <span class="game-turn" id="turn-indicator">Waiting for players...</span>
+    </div>
+    <div class="game-controls">
+      <button id="btn-fullscreen" class="btn btn-icon" title="Fullscreen">⛶</button>
+      <button id="btn-leave-game" class="btn btn-small btn-danger">LEAVE</button>
+    </div>
+  </div>
+
+  <div class="game-table">
+    <div class="other-players" id="other-players"></div>
+
+    <div class="table-center">
+      <div class="pile-section">
+        <div class="draw-pile" id="draw-pile">
+          <div class="card-back card-back-large"></div>
+          <span class="pile-count" id="deck-count">0</span>
+        </div>
+        <div class="discard-pile" id="discard-pile">
+          <div class="discard-placeholder">PILE</div>
+        </div>
+      </div>
+      <button id="btn-confused" class="btn btn-danger btn-confused">CONFUSED!</button>
+    </div>
+
+    <div class="player-hand" id="player-hand"></div>
+  </div>
+
+  <div class="game-bottom-bar">
+    <div class="game-actions" id="game-actions">
+      <button id="btn-draw" class="btn btn-secondary">DRAW</button>
+      <button id="btn-end-turn" class="btn btn-primary">END TURN</button>
+    </div>
+    <div class="activity-log" id="activity-log">
+      <div class="log-entries" id="log-entries"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Chat..." maxlength="200" autocomplete="off">
+        <button id="btn-chat-send" class="btn btn-small">SEND</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="punishment-overlay" class="overlay hidden">
+  <div class="overlay-content">
+    <h3 id="punishment-title">PUNISHMENT</h3>
+    <div id="punishment-body"></div>
+    <div class="overlay-actions" id="punishment-actions"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/particles.js"></script>
+<script src="js/socket.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/lobby.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
