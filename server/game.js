@@ -18,6 +18,9 @@ class Game {
     this.punishments = [];
     this.punishmentIdCounter = 0;
     this.chatHistory = [];
+    this.rules = [];
+    this.round = 1;
+    this.lastWinner = null;
     this.initDeck();
     this.dealCards();
   }
@@ -69,8 +72,16 @@ class Game {
 
     const card = player.hand.splice(cardIndex, 1)[0];
     this.discardPile.push(card);
+
+    let winner = null;
+    if (player.hand.length === 0) {
+      winner = { id: player.id, nickname: player.nickname };
+      this.lastWinner = player;
+      this.state = 'round_end';
+    }
+
     this.advanceTurn();
-    return { success: true, card };
+    return { success: true, card, winner };
   }
 
   drawCard(playerId) {
@@ -94,6 +105,29 @@ class Game {
     this.currentTurnIndex = (
       this.currentTurnIndex + this.turnDirection + this.players.length
     ) % this.players.length;
+  }
+
+  addRule(rule) {
+    this.rules.push(rule);
+  }
+
+  newRound() {
+    const allCards = [];
+    for (const p of this.players) {
+      allCards.push(...p.hand);
+      p.hand = [];
+    }
+    allCards.push(...this.discardPile);
+    allCards.push(...this.deck);
+    this.discardPile = [];
+    this.deck = allCards;
+    this.shuffle();
+    this.dealCards();
+    this.currentTurnIndex = 0;
+    this.state = 'playing';
+    this.punishments = [];
+    this.punishmentIdCounter = 0;
+    this.round++;
   }
 
   createPunishment(accuserId, targetId, reason, amount) {
@@ -216,6 +250,8 @@ class Game {
       discardTop: this.discardPile.length > 0
         ? this.discardPile[this.discardPile.length - 1] : null,
       state: this.state,
+      round: this.round,
+      rules: this.rules,
       punishments: this.punishments.filter(p => !p.resolved).map(p => ({
         id: p.id,
         accuserId: p.accuserId,

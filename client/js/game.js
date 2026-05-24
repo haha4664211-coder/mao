@@ -13,8 +13,6 @@ function getCardDisplayName(card) {
 let gameState = null;
 let selectedCardIndex = -1;
 let myHand = [];
-let currentTurnId = null;
-let isMyTurn = false;
 
 const gameRoomCode = document.getElementById('game-room-code');
 const turnIndicator = document.getElementById('turn-indicator');
@@ -113,12 +111,6 @@ socket.on('game_state', function(state) {
   renderGame();
 });
 
-socket.on('turn_change', function(data) {
-  currentTurnId = data.playerId;
-  isMyTurn = currentTurnId === myId;
-  renderGame();
-});
-
 socket.on('card_played', function(data) {
   sound.play('cardPlay');
 });
@@ -174,10 +166,84 @@ socket.on('player_kicked', function(data) {
   }
 });
 
+socket.on('round_won', function(data) {
+  sound.play('punish');
+  showRuleForm(data);
+});
+
+socket.on('rule_under_review', function() {
+  showToast('Checking rule with AI...', 'info');
+});
+
+socket.on('rule_evaluated', function(result) {
+  var description = '';
+  var descEl = document.getElementById('rule-description');
+  if (descEl) description = descEl.value;
+
+  if (result.valid) {
+    punishmentBody.innerHTML =
+      '<div class="punish-info">' +
+      '<p style="color:var(--accent-green);font-size:18px;font-weight:700">RULE ACCEPTED!</p>' +
+      '<p class="punish-reason">"' + description + '"</p>' +
+      '<p><span class="punish-highlight">Summary:</span> ' + result.summary + '</p>' +
+      '<p><span class="punish-highlight">Interpretation:</span> ' + result.interpretation + '</p>' +
+      '</div>';
+    punishmentActions.innerHTML =
+      '<button class="btn btn-primary" id="btn-confirm-rule">CONFIRM RULE</button>';
+    document.getElementById('btn-confirm-rule').addEventListener('click', function() {
+      socket.emit('confirm_rule', {
+        rule: {
+          description: description,
+          summary: result.summary,
+          interpretation: result.interpretation,
+          createdBy: myNickname,
+          round: gameState ? gameState.round : 0
+        }
+      });
+    });
+  } else {
+    var errorMsg = result.error || 'sorry i don\'t understand that';
+    punishmentBody.innerHTML =
+      '<div class="punish-info">' +
+      '<p style="color:var(--accent-red);font-size:16px;font-weight:700">RULE REJECTED</p>' +
+      '<p class="punish-reason">"' + description + '"</p>' +
+      '<p style="color:var(--text-secondary)">' + errorMsg + '</p>' +
+      '<p style="margin-top:12px">Try describing your rule differently.</p>' +
+      '</div>';
+    punishmentActions.innerHTML =
+      '<button class="btn btn-primary" id="btn-try-again">TRY AGAIN</button>' +
+      '<button class="btn btn-danger" id="btn-skip-rule">SKIP</button>';
+    document.getElementById('btn-try-again').addEventListener('click', function() {
+      if (gameState) {
+        showRuleForm({ winnerId: myId, winnerNickname: myNickname, round: gameState.round, rules: gameState.rules || [] });
+      }
+    });
+    document.getElementById('btn-skip-rule').addEventListener('click', function() {
+      socket.emit('confirm_rule', {
+        rule: {
+          description: 'No rule added',
+          summary: 'Skipped',
+          interpretation: 'Winner chose not to add a rule this round.',
+          createdBy: myNickname,
+          round: gameState ? gameState.round : 0
+        }
+      });
+    });
+  }
+});
+
+socket.on('rule_created', function(data) {
+  closePunishmentOverlay();
+  showToast('New rule added!', 'success');
+  showRuleApproved(data);
+});
+
+socket.on('new_round', function(data) {
+  showToast('Round ' + data.round + ' started!', 'success');
+});
+
 function renderGame() {
   if (!gameState) return;
-  var currentPlayer = gameState.players.find(function(p) { return p.isCurrentTurn; });
-  turnIndicator.textContent = currentPlayer ? 'TURN: ' + currentPlayer.nickname : 'Waiting...';
   deckCountEl.textContent = gameState.deckSize;
   renderOtherPlayers();
   renderHand();
@@ -191,7 +257,6 @@ function renderOtherPlayers() {
   others.forEach(function(p) {
     var div = document.createElement('div');
     div.className = 'other-player';
-    if (p.isCurrentTurn) div.classList.add('is-current-turn');
     if (!p.isConnected) div.classList.add('disconnected');
     div.innerHTML =
       '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
@@ -392,4 +457,57 @@ function updatePunishmentVote(data) {
 
 function closePunishmentOverlay() {
   punishmentOverlay.classList.add('hidden');
+}
+
+function showRuleForm(data) {
+  var isWinner = data.winnerId === myId;
+  punishmentTitle.textContent = 'ROUND ' + data.round + ' - ' + data.winnerNickname + ' WINS!';
+
+  if (isWinner) {
+    punishmentBody.innerHTML =
+      '<div class="punish-info">' +
+      '<p>Congratulations! You won round ' + data.round + '.</p>' +
+      '<p>Create a new hidden rule that everyone must follow.</p>' +
+      '<textarea id="rule-description" class="punish-input" style="height:80px;resize:none" placeholder="Describe your rule... e.g. Only play spades"></textarea>' +
+      '<p style="font-size:12px;color:var(--text-secondary)">The AI will check if your rule makes sense.</p>' +
+      '</div>';
+    punishmentActions.innerHTML =
+      '<button class="btn btn-primary" id="btn-submit-rule">CREATE RULE</button>';
+    punishmentOverlay.classList.remove('hidden');
+
+    document.getElementById('btn-submit-rule').addEventListener('click', function() {
+      var desc = document.getElementById('rule-description').value.trim();
+      if (!desc) { showToast('Enter a rule description', 'error'); return; }
+      socket.emit('submit_rule', { description: desc });
+      document.getElementById('btn-submit-rule').disabled = true;
+      document.getElementById('btn-submit-rule').textContent = 'CHECKING...';
+    });
+  } else {
+    punishmentBody.innerHTML =
+      '<div class="punish-info">' +
+      '<p><span class="punish-highlight">' + data.winnerNickname + '</span> won round ' + data.round + '!</p>' +
+      '<p>They are creating a new hidden rule...</p>' +
+      '<p style="font-size:12px;color:var(--text-secondary)">Current rules: ' + data.rules.length + '</p>' +
+      '</div>';
+    punishmentActions.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">Waiting for winner to create a rule</p>';
+    punishmentOverlay.classList.remove('hidden');
+  }
+}
+
+function showRuleApproved(data) {
+  punishmentBody.innerHTML =
+    '<div class="punish-info">' +
+    '<p style="color:var(--accent-green);font-size:18px;font-weight:700">NEW RULE IN PLAY!</p>' +
+    '<p class="punish-reason">"' + data.rule.description + '"</p>' +
+    '<p><span class="punish-highlight">' + data.rule.summary + '</span></p>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Total rules: ' + data.rules.length + '</p>' +
+    '</div>';
+  punishmentActions.innerHTML =
+    '<button class="btn btn-primary" id="btn-next-round">NEXT ROUND</button>';
+  punishmentOverlay.classList.remove('hidden');
+
+  document.getElementById('btn-next-round').addEventListener('click', function() {
+    closePunishmentOverlay();
+    socket.emit('start_new_round');
+  });
 }
