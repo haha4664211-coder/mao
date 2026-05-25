@@ -23,7 +23,6 @@ const drawPile = document.getElementById('draw-pile');
 const deckCountEl = document.getElementById('deck-count');
 const btnDraw = document.getElementById('btn-draw');
 const btnEndTurn = document.getElementById('btn-end-turn');
-const btnConfused = document.getElementById('btn-confused');
 const btnFullscreen = document.getElementById('btn-fullscreen');
 const btnLeaveGame = document.getElementById('btn-leave-game');
 const logEntries = document.getElementById('log-entries');
@@ -113,6 +112,7 @@ socket.on('game_state', function(state) {
 
 socket.on('card_played', function(data) {
   sound.play('cardPlay');
+  animateCardPlay(data.card, data.playerId);
 });
 
 socket.on('card_drawn', function(data) {
@@ -251,18 +251,93 @@ function renderGame() {
   updateActionButtons();
 }
 
+function animateCardPlay(card, playerId) {
+  if (!card) return;
+
+  var gameTable = document.querySelector('.game-table');
+  var tableRect = gameTable.getBoundingClientRect();
+  var discardRect = discardPileEl.getBoundingClientRect();
+
+  var startX = discardRect.left - tableRect.left + (discardRect.width / 2);
+  var startY = discardRect.top - tableRect.top;
+
+  var animEl = document.createElement('div');
+  animEl.className = 'card-play-animation';
+
+  var imgSrc = getCardImage(card);
+  var displayName = getCardDisplayName(card);
+
+  var playerNick = '';
+  if (gameState) {
+    var p = gameState.players.find(function(p) { return p.id === playerId; });
+    if (p) playerNick = p.nickname;
+  }
+
+  animEl.innerHTML =
+    '<div class="card-play-inner">' +
+    '<div class="card-play-label">' + playerNick + ' played</div>' +
+    '<img src="' + imgSrc + '" alt="' + displayName + '">' +
+    '</div>';
+
+  animEl.style.left = (startX - 50) + 'px';
+  animEl.style.top = (startY - 70) + 'px';
+
+  gameTable.appendChild(animEl);
+
+  setTimeout(function() {
+    if (animEl.parentNode) animEl.parentNode.removeChild(animEl);
+  }, 3000);
+}
+
+// Re-render players on window resize for circle layout
+window.addEventListener('resize', function() {
+  if (gameState) renderOtherPlayers();
+});
+
 function renderOtherPlayers() {
-  otherPlayersEl.innerHTML = '';
-  var others = gameState.players.filter(function(p) { return p.id !== myId; });
-  others.forEach(function(p) {
+  var container = otherPlayersEl;
+  container.innerHTML = '';
+
+  var players = gameState.players;
+  var count = players.length;
+  if (count === 0) return;
+
+  var myIdx = players.findIndex(function(p) { return p.id === myId; });
+  if (myIdx === -1) myIdx = 0;
+
+  var tableEl = container.parentElement;
+  var rect = tableEl.getBoundingClientRect();
+  var cx = rect.width / 2;
+  var cy = rect.height / 2;
+  var radius = Math.min(rect.width * 0.35, rect.height * 0.32, 280);
+
+  players.forEach(function(p, i) {
+    var angle = ((i - myIdx) / count) * 2 * Math.PI + Math.PI / 2;
+    var x = cx + radius * Math.cos(angle);
+    var y = cy + radius * Math.sin(angle);
+
     var div = document.createElement('div');
     div.className = 'other-player';
     if (!p.isConnected) div.classList.add('disconnected');
-    div.innerHTML =
-      '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
-      '<div class="opl-name">' + p.nickname + '</div>' +
-      '<div class="opl-cards">' + p.handSize + ' cards</div>';
-    otherPlayersEl.appendChild(div);
+    if (p.isCurrentTurn) div.classList.add('is-current-turn');
+    if (p.id === myId) div.classList.add('is-me');
+
+    div.style.left = x + 'px';
+    div.style.top = y + 'px';
+
+    if (p.id === myId) {
+      div.innerHTML =
+        '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
+        '<div class="opl-name">' + p.nickname + ' (You)</div>' +
+        '<div class="opl-cards">' + (myHand ? myHand.length : p.handSize) + ' cards</div>';
+    } else {
+      div.innerHTML =
+        '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
+        '<div class="opl-name">' + p.nickname + '</div>' +
+        '<div class="opl-cards">' + p.handSize + ' cards</div>';
+    }
+
+    container.appendChild(div);
   });
 }
 
@@ -308,7 +383,6 @@ function renderDiscardPile() {
 function updateActionButtons() {
   btnDraw.disabled = false;
   btnEndTurn.disabled = false;
-  btnConfused.style.display = myHand ? 'inline-block' : 'none';
 }
 
 function playCard(index) {
@@ -325,12 +399,6 @@ btnEndTurn.addEventListener('click', function() {
   socket.emit('end_turn');
   selectedCardIndex = -1;
   sound.play('click');
-});
-
-btnConfused.addEventListener('click', function() {
-  if (!gameState || !myHand) return;
-  sound.play('click');
-  showAccusationForm();
 });
 
 drawPile.addEventListener('click', function() {
@@ -375,43 +443,6 @@ function addLogEntry(data) {
   entry.innerHTML = '<span class="log-nick">' + data.nickname + ':</span> ' + data.message;
   logEntries.appendChild(entry);
   logEntries.scrollTop = logEntries.scrollHeight;
-}
-
-function showAccusationForm() {
-  var others = gameState.players.filter(function(p) { return p.id !== myId; });
-  if (others.length === 0) {
-    showToast('No other players to accuse', 'error');
-    return;
-  }
-  var options = others.map(function(p) {
-    return '<option value="' + p.id + '">' + p.nickname + '</option>';
-  }).join('');
-
-  punishmentTitle.textContent = 'CONFUSED!';
-  punishmentBody.innerHTML =
-    '<div class="punish-info">' +
-    '<p>Who broke a rule?</p>' +
-    '<select id="punish-target" class="punish-select">' + options + '</select>' +
-    '<p>Reason (what did they do wrong?)</p>' +
-    '<input type="text" id="punish-reason" placeholder="Describe the infraction..." maxlength="100" class="punish-input">' +
-    '<p>Penalty cards:</p>' +
-    '<input type="number" id="punish-amount" value="1" min="1" max="10" class="punish-amount-input">' +
-    '</div>';
-  punishmentActions.innerHTML =
-    '<button class="btn btn-danger" id="btn-submit-punish">ACCUSE</button>' +
-    '<button class="btn btn-small" id="btn-cancel-punish">CANCEL</button>';
-  punishmentOverlay.classList.remove('hidden');
-
-  document.getElementById('btn-submit-punish').addEventListener('click', function() {
-    var targetId = document.getElementById('punish-target').value;
-    var reason = document.getElementById('punish-reason').value.trim();
-    var amount = parseInt(document.getElementById('punish-amount').value) || 1;
-    socket.emit('submit_punishment', { targetId: targetId, reason: reason, amount: amount });
-    closePunishmentOverlay();
-    showToast('Punishment submitted for vote', 'info');
-  });
-
-  document.getElementById('btn-cancel-punish').addEventListener('click', closePunishmentOverlay);
 }
 
 function showPunishmentVote(data) {
