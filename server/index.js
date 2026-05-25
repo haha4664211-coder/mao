@@ -151,6 +151,36 @@ io.on('connection', (socket) => {
     broadcastGameState(game);
   });
 
+  socket.on('punish_player', ({ targetId }) => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby || !lobby.game) return;
+    if (targetId === socket.id) {
+      socket.emit('error', { message: 'Cannot punish yourself' });
+      return;
+    }
+    const result = lobby.game.simplePunish(socket.id, targetId);
+    if (!result.success) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+    const game = lobby.game;
+    io.to(lobby.code).emit('player_punished', result);
+    broadcastGameState(game);
+  });
+
+  socket.on('punish_back', () => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby || !lobby.game) return;
+    const result = lobby.game.punishBack(socket.id);
+    if (!result.success) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+    const game = lobby.game;
+    io.to(lobby.code).emit('punish_back_result', result);
+    broadcastGameState(game);
+  });
+
   socket.on('end_turn', () => {
     const lobby = findLobbyByPlayer(socket.id);
     if (!lobby || !lobby.game) return;

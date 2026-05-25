@@ -14,8 +14,10 @@ let gameState = null;
 let selectedCardIndex = -1;
 let myHand = [];
 
+let lastPlayedTime = 0;
+const CARD_COOLDOWN_MS = 3000;
+
 const gameRoomCode = document.getElementById('game-room-code');
-const turnIndicator = document.getElementById('turn-indicator');
 const otherPlayersEl = document.getElementById('other-players');
 const playerHandEl = document.getElementById('player-hand');
 const discardPileEl = document.getElementById('discard-pile');
@@ -139,8 +141,31 @@ socket.on('punishment_result', function(data) {
   }
 });
 
-socket.on('chat_message', function(data) {
-  addLogEntry(data);
+socket.on('player_punished', function(data) {
+  sound.play('punish');
+  if (gameState) {
+    var victim = gameState.players.find(function(p) { return p.id === data.targetId; });
+    var punisher = gameState.players.find(function(p) { return p.id === data.punisherId; });
+    var vName = victim ? victim.nickname : 'Player';
+    var pName = punisher ? punisher.nickname : 'Player';
+    showToast(pName + ' punished ' + vName + '! They drew a card', 'error');
+
+    // If I was punished, show punish-back button
+    if (data.targetId === myId) {
+      showPunishBackButton(data.punisherId);
+    }
+  }
+});
+
+socket.on('punish_back_result', function(data) {
+  if (gameState) {
+    var victim = gameState.players.find(function(p) { return p.id === data.victimId; });
+    var punisher = gameState.players.find(function(p) { return p.id === data.punisherId; });
+    var vName = victim ? victim.nickname : 'Player';
+    var pName = punisher ? punisher.nickname : 'Player';
+    showToast(vName + ' punished back ' + pName + '! Card returned!', 'success');
+    hidePunishBackButton();
+  }
 });
 
 socket.on('player_disconnected', function(data) {
@@ -289,6 +314,46 @@ function animateCardPlay(card, playerId) {
   }, 3000);
 }
 
+// Cooldown timer: update UI every second
+var cooldownInterval = setInterval(function() {
+  if (gameState && !canAct()) updateCooldownUI();
+}, 1000);
+
+// Punish button click delegation on other-players container
+otherPlayersEl.addEventListener('click', function(e) {
+  var btn = e.target.closest('.btn-punish');
+  if (btn) {
+    var targetId = btn.getAttribute('data-target');
+    sound.play('click');
+    socket.emit('punish_player', { targetId: targetId });
+  }
+});
+
+function showPunishBackButton(punisherId) {
+  var existing = document.getElementById('punish-back-bar');
+  if (existing) existing.remove();
+
+  var bar = document.createElement('div');
+  bar.id = 'punish-back-bar';
+  bar.className = 'punish-back-bar';
+  bar.setAttribute('data-punisher', punisherId);
+  bar.innerHTML =
+    '<span>You were punished! Get revenge?</span>' +
+    '<button class="btn btn-danger btn-small" id="btn-punish-back">PUNISH BACK!</button>';
+  document.querySelector('.game-bottom-bar').appendChild(bar);
+
+  document.getElementById('btn-punish-back').addEventListener('click', function() {
+    socket.emit('punish_back');
+    sound.play('punish');
+    hidePunishBackButton();
+  });
+}
+
+function hidePunishBackButton() {
+  var bar = document.getElementById('punish-back-bar');
+  if (bar) bar.remove();
+}
+
 // Re-render players on window resize for circle layout
 window.addEventListener('resize', function() {
   if (gameState) renderOtherPlayers();
@@ -319,22 +384,24 @@ function renderOtherPlayers() {
     var div = document.createElement('div');
     div.className = 'other-player';
     if (!p.isConnected) div.classList.add('disconnected');
-    if (p.isCurrentTurn) div.classList.add('is-current-turn');
     if (p.id === myId) div.classList.add('is-me');
 
     div.style.left = x + 'px';
     div.style.top = y + 'px';
 
+    var punishBtnHtml = '<button class="btn-punish" data-target="' + p.id + '">PUNISH</button>';
     if (p.id === myId) {
       div.innerHTML =
         '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
         '<div class="opl-name">' + p.nickname + ' (You)</div>' +
-        '<div class="opl-cards">' + (myHand ? myHand.length : p.handSize) + ' cards</div>';
+        '<div class="opl-cards">' + (myHand ? myHand.length : p.handSize) + ' cards</div>' +
+        punishBtnHtml;
     } else {
       div.innerHTML =
         '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
         '<div class="opl-name">' + p.nickname + '</div>' +
-        '<div class="opl-cards">' + p.handSize + ' cards</div>';
+        '<div class="opl-cards">' + p.handSize + ' cards</div>' +
+        punishBtnHtml;
     }
 
     container.appendChild(div);
@@ -381,16 +448,45 @@ function renderDiscardPile() {
 }
 
 function updateActionButtons() {
-  btnDraw.disabled = false;
+  updateCooldownUI();
   btnEndTurn.disabled = false;
 }
 
 function playCard(index) {
+  var now = Date.now();
+  if (now - lastPlayedTime < CARD_COOLDOWN_MS) {
+    showToast('Wait ' + Math.ceil((CARD_COOLDOWN_MS - (now - lastPlayedTime)) / 1000) + 's before playing again', 'info');
+    return;
+  }
   socket.emit('play_card', { cardIndex: index });
   selectedCardIndex = -1;
+  lastPlayedTime = now;
+  updateCooldownUI();
+}
+
+function canAct() {
+  return Date.now() - lastPlayedTime >= CARD_COOLDOWN_MS;
+}
+
+function updateCooldownUI() {
+  if (!canAct()) {
+    btnDraw.disabled = true;
+    btnDraw.textContent = 'WAIT...';
+    if (drawPile) drawPile.style.opacity = '0.5';
+    if (drawPile) drawPile.style.pointerEvents = 'none';
+  } else {
+    btnDraw.disabled = false;
+    btnDraw.textContent = 'DRAW';
+    if (drawPile) drawPile.style.opacity = '1';
+    if (drawPile) drawPile.style.pointerEvents = 'auto';
+  }
 }
 
 btnDraw.addEventListener('click', function() {
+  if (!canAct()) {
+    showToast('Wait for cooldown before drawing', 'info');
+    return;
+  }
   socket.emit('draw_card');
   sound.play('click');
 });
@@ -399,9 +495,15 @@ btnEndTurn.addEventListener('click', function() {
   socket.emit('end_turn');
   selectedCardIndex = -1;
   sound.play('click');
+  lastPlayedTime = 0;
+  updateCooldownUI();
 });
 
 drawPile.addEventListener('click', function() {
+  if (!canAct()) {
+    showToast('Wait for cooldown before drawing', 'info');
+    return;
+  }
   socket.emit('draw_card');
   sound.play('click');
 });
@@ -416,6 +518,7 @@ btnFullscreen.addEventListener('click', function() {
 
 btnLeaveGame.addEventListener('click', function() {
   if (confirm('Leave the game?')) {
+    clearInterval(cooldownInterval);
     currentRoom = null;
     clearStoredRoom();
     myHand = [];

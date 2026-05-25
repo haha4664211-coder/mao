@@ -21,6 +21,7 @@ class Game {
     this.rules = [];
     this.round = 1;
     this.lastWinner = null;
+    this.lastPlayedAt = {};
     this.initDeck();
     this.dealCards();
   }
@@ -70,6 +71,11 @@ class Game {
     if (!player) return { success: false, error: 'Player not found' };
     if (cardIndex < 0 || cardIndex >= player.hand.length) return { success: false, error: 'Invalid card index' };
 
+    const now = Date.now();
+    const last = this.lastPlayedAt[playerId] || 0;
+    if (now - last < 3000) return { success: false, error: 'Wait before playing again' };
+    this.lastPlayedAt[playerId] = now;
+
     const card = player.hand.splice(cardIndex, 1)[0];
     this.discardPile.push(card);
 
@@ -88,6 +94,10 @@ class Game {
     const player = this.getPlayer(playerId);
     if (!player) return { success: false, error: 'Player not found' };
     if (this.deck.length === 0) return { success: false, error: 'Deck is empty' };
+
+    const now = Date.now();
+    const last = this.lastPlayedAt[playerId] || 0;
+    if (now - last < 3000) return { success: false, error: 'Wait before drawing' };
 
     const card = this.deck.pop();
     player.hand.push(card);
@@ -219,6 +229,49 @@ class Game {
       p.id !== punishment.accuserId && p.id !== punishment.targetId
     );
     return Object.keys(punishment.votes).length >= eligibleVoters.length;
+  }
+
+  simplePunish(accuserId, targetId) {
+    const accuser = this.getPlayer(accuserId);
+    const target = this.getPlayer(targetId);
+    if (!accuser || !target) return { success: false, error: 'Player not found' };
+    if (this.deck.length === 0) return { success: false, error: 'Deck is empty' };
+
+    const card = this.deck.pop();
+    target.hand.push(card);
+
+    this.lastSimplePunish = this.lastSimplePunish || {};
+    this.lastSimplePunish[targetId] = {
+      punisherId: accuserId,
+      card: card,
+      timestamp: Date.now()
+    };
+
+    return { success: true, card, targetId, punisherId: accuserId };
+  }
+
+  punishBack(victimId) {
+    this.lastSimplePunish = this.lastSimplePunish || {};
+    const punishData = this.lastSimplePunish[victimId];
+    if (!punishData) return { success: false, error: 'No punishment to reverse' };
+
+    const victim = this.getPlayer(victimId);
+    const punisher = this.getPlayer(punishData.punisherId);
+    if (!victim || !punisher) return { success: false, error: 'Player not found' };
+
+    // The punishment card was pushed to the end of the hand
+    const cardIndex = victim.hand.length - 1;
+    if (cardIndex < 0) {
+      delete this.lastSimplePunish[victimId];
+      return { success: false, error: 'Card no longer in hand' };
+    }
+
+    const card = victim.hand.splice(cardIndex, 1)[0];
+    punisher.hand.push(card);
+
+    delete this.lastSimplePunish[victimId];
+
+    return { success: true, card, victimId, punisherId: punishData.punisherId };
   }
 
   addChat(playerId, message) {
