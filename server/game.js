@@ -22,6 +22,7 @@ class Game {
     this.round = 1;
     this.lastWinner = null;
     this.lastPlayedAt = {};
+    this.lastSimplePunish = {};
     this.initDeck();
     this.dealCards();
   }
@@ -137,6 +138,7 @@ class Game {
     this.state = 'playing';
     this.punishments = [];
     this.punishmentIdCounter = 0;
+    this.lastSimplePunish = {};
     this.round++;
   }
 
@@ -240,7 +242,6 @@ class Game {
     const card = this.deck.pop();
     target.hand.push(card);
 
-    this.lastSimplePunish = this.lastSimplePunish || {};
     this.lastSimplePunish[targetId] = {
       punisherId: accuserId,
       card: card,
@@ -251,7 +252,6 @@ class Game {
   }
 
   punishBack(victimId) {
-    this.lastSimplePunish = this.lastSimplePunish || {};
     const punishData = this.lastSimplePunish[victimId];
     if (!punishData) return { success: false, error: 'No punishment to reverse' };
 
@@ -259,7 +259,6 @@ class Game {
     const punisher = this.getPlayer(punishData.punisherId);
     if (!victim || !punisher) return { success: false, error: 'Player not found' };
 
-    // The punishment card was pushed to the end of the hand
     const cardIndex = victim.hand.length - 1;
     if (cardIndex < 0) {
       delete this.lastSimplePunish[victimId];

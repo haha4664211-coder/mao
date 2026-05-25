@@ -150,7 +150,6 @@ socket.on('player_punished', function(data) {
     var pName = punisher ? punisher.nickname : 'Player';
     showToast(pName + ' punished ' + vName + '! They drew a card', 'error');
 
-    // If I was punished, show punish-back button
     if (data.targetId === myId) {
       showPunishBackButton(data.punisherId);
     }
@@ -329,31 +328,6 @@ otherPlayersEl.addEventListener('click', function(e) {
   }
 });
 
-function showPunishBackButton(punisherId) {
-  var existing = document.getElementById('punish-back-bar');
-  if (existing) existing.remove();
-
-  var bar = document.createElement('div');
-  bar.id = 'punish-back-bar';
-  bar.className = 'punish-back-bar';
-  bar.setAttribute('data-punisher', punisherId);
-  bar.innerHTML =
-    '<span>You were punished! Get revenge?</span>' +
-    '<button class="btn btn-danger btn-small" id="btn-punish-back">PUNISH BACK!</button>';
-  document.querySelector('.game-bottom-bar').appendChild(bar);
-
-  document.getElementById('btn-punish-back').addEventListener('click', function() {
-    socket.emit('punish_back');
-    sound.play('punish');
-    hidePunishBackButton();
-  });
-}
-
-function hidePunishBackButton() {
-  var bar = document.getElementById('punish-back-bar');
-  if (bar) bar.remove();
-}
-
 // Re-render players on window resize for circle layout
 window.addEventListener('resize', function() {
   if (gameState) renderOtherPlayers();
@@ -390,6 +364,7 @@ function renderOtherPlayers() {
     div.style.top = y + 'px';
 
     var punishBtnHtml = '<button class="btn-punish" data-target="' + p.id + '">PUNISH</button>';
+    var punishBtnHtml = '<button class="btn-punish" data-target="' + p.id + '">PUNISH</button>';
     if (p.id === myId) {
       div.innerHTML =
         '<div class="opl-avatar">' + p.nickname.charAt(0).toUpperCase() + '</div>' +
@@ -406,6 +381,31 @@ function renderOtherPlayers() {
 
     container.appendChild(div);
   });
+}
+
+function showPunishBackButton(punisherId) {
+  var existing = document.getElementById('punish-back-bar');
+  if (existing) existing.remove();
+
+  var bar = document.createElement('div');
+  bar.id = 'punish-back-bar';
+  bar.className = 'punish-back-bar';
+  bar.setAttribute('data-punisher', punisherId);
+  bar.innerHTML =
+    '<span>You were punished! Get revenge?</span>' +
+    '<button class="btn btn-danger btn-small" id="btn-punish-back">PUNISH BACK!</button>';
+  document.querySelector('.game-bottom-bar').appendChild(bar);
+
+  document.getElementById('btn-punish-back').addEventListener('click', function() {
+    socket.emit('punish_back');
+    sound.play('punish');
+    hidePunishBackButton();
+  });
+}
+
+function hidePunishBackButton() {
+  var bar = document.getElementById('punish-back-bar');
+  if (bar) bar.remove();
 }
 
 function renderHand() {
