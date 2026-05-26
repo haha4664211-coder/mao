@@ -523,6 +523,39 @@ class BotController {
       if (!p.isBot) continue;
       this.learnFromPlay(p.id, playerId, card);
     }
+
+    // Built-in base rule: card must match the previous top card's suit or rank
+    var pile = this.game.discardPile;
+    if (pile.length >= 2) {
+      var prevCard = pile[pile.length - 2];
+      var matchesSuitOrRank = prevCard && (
+        card.suit === prevCard.suit || card.rank === prevCard.rank ||
+        card.rank === 'joker' || prevCard.rank === 'joker'
+      );
+      if (prevCard && !matchesSuitOrRank) {
+        for (var i = 0; i < this.game.players.length; i++) {
+          var p = this.game.players[i];
+          if (!p.isBot || p.id === playerId) continue;
+          var mem = this.botMemory.get(p.id);
+          if (!mem) continue;
+          var stats = mem.stats;
+          if (Math.random() > stats.detectChance * 0.7) continue;
+          if (this.game.state !== 'playing') return;
+
+          var self = this;
+          (function(botId, targetId) {
+            setTimeout(function() {
+              if (self.game.state !== 'playing') return;
+              var result = self.game.simplePunish(botId, targetId);
+              if (result.success) {
+                self.io.to(self.lobbyCode).emit('player_punished', result);
+                self.broadcastGameState();
+              }
+            }, 500 + Math.random() * 1500);
+          })(p.id, playerId);
+        }
+      }
+    }
   }
 
   learnFromPlay(botId, playerId, card) {

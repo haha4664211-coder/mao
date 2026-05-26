@@ -68,7 +68,8 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - Standard 54-card deck (52 + 2 jokers), 1 or 2 decks selectable
 - Auto-reshuffle when deck runs out (discard pile shuffled back, top card stays)
 - 5 cards dealt per player, 1 starts the discard pile
-- Turn-based: play matching card (suit/rank), draw, or end turn
+- Turn-based: play a card matching the top card's suit or rank, draw, or end turn
+- Bots enforce suit/rank matching as a base rule — they will punish players who play off-suit/rank even if no hidden rule covers it (gated by bot difficulty and detect chance)
 - Drawing auto-ends the turn and passes to next player
 - Punishment system: accuse a player → group vote → majority decides penalty
 - Per-player cooldown (500ms) prevents rapid double-plays
