@@ -87,6 +87,7 @@ var AudioManager = {
   },
 
   playMusic: function(src) {
+    if (this.musicAudio && this._pendingMusic === src) return;
     this._pendingMusic = src;
     this._pendingPlay = true;
     if (this._unlocked) {
@@ -98,7 +99,6 @@ var AudioManager = {
 
   stopMusic: function() {
     this._pendingPlay = false;
-    this._pendingMusic = null;
     if (this.musicAudio) {
       try { this.musicAudio.stop(); } catch (e) {}
       this.musicAudio = null;
