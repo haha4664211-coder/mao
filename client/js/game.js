@@ -27,6 +27,8 @@ const btnDraw = document.getElementById('btn-draw');
 const btnEndTurn = document.getElementById('btn-end-turn');
 const btnFullscreen = document.getElementById('btn-fullscreen');
 const btnLeaveGame = document.getElementById('btn-leave-game');
+const btnKnock = document.getElementById('btn-knock');
+const btnChatToggle = document.getElementById('btn-chat-toggle');
 const logEntries = document.getElementById('log-entries');
 const chatInput = document.getElementById('chat-input');
 const btnChatSend = document.getElementById('btn-chat-send');
@@ -375,6 +377,7 @@ var RC_ACTION_DEFS = [
     { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
   ]},
   { type: 'play_again', name: 'Take another turn', desc: 'take another turn', params: [] },
+  { type: 'knock_on_table', name: 'Knock on table', desc: 'knock on the table', params: [] },
 ];
 
 var SUIT_OPTIONS = ['any', 'spades', 'clubs', 'diamonds', 'hearts', 'red suits', 'black suits'];
@@ -388,7 +391,8 @@ var SIMPLE_ACTIONS = {
   reverse: { name: 'Reverse direction', desc: 'reverse direction {timing}', targets: [], timing: true, mapType: 'reverse_direction' },
   double_turn: { name: 'Double turn', desc: '{target} takes double turn {timing}', targets: ['that', 'next'], timing: true, mapType: 'play_again' },
   change_suit: { name: 'Change suit to...', desc: '{target} must change suit to {suit} {timing}', targets: ['that', 'next'], timing: true, mapType: 'change_active_suit', params: [{ name: 'suit', label: 'Suit', type: 'select', options: ['clubs','diamonds','hearts','spades'] }] },
-  must_say: { name: 'Must say...', desc: '{target} must say "{phrase}"', targets: ['that', 'next', 'prev', 'all'], timing: false, mapType: 'must_say_phrase', params: [{ name: 'phrase', label: 'Phrase', type: 'string' }] }
+  must_say: { name: 'Must say...', desc: '{target} must say "{phrase}"', targets: ['that', 'next', 'prev', 'all'], timing: false, mapType: 'must_say_phrase', params: [{ name: 'phrase', label: 'Phrase', type: 'string' }] },
+  knock: { name: 'Knock on table', desc: '{target} knocks on the table {timing}', targets: ['that', 'next', 'prev'], timing: true, mapType: 'knock_on_table' }
 };
 
 var SIMPLE_ACTION_KEYS = Object.keys(SIMPLE_ACTIONS);
@@ -1216,6 +1220,20 @@ chatInput.addEventListener('keydown', function(e) {
 });
 
 btnChatSend.addEventListener('click', sendChat);
+
+btnKnock.addEventListener('click', function() {
+  socket.emit('knock');
+});
+
+socket.on('knock', function(data) {
+  addLogEntry({ nickname: data.nickname, message: '👊 knocks on the table!' });
+});
+
+btnChatToggle.addEventListener('click', function() {
+  var panel = document.getElementById('chat-panel');
+  var minimized = panel.classList.toggle('chat-panel--min');
+  btnChatToggle.textContent = minimized ? '+' : '−';
+});
 
 function sendChat() {
   var msg = chatInput.value.trim();

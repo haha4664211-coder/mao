@@ -265,6 +265,14 @@ io.on('connection', (socket) => {
     io.to(lobby.code).emit('chat_message', lobby.game.chatHistory.slice(-1)[0]);
   });
 
+  socket.on('knock', () => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby || !lobby.game) return;
+    const player = lobby.game.players.find(function(p) { return p.id === socket.id; });
+    if (!player) return;
+    io.to(lobby.code).emit('knock', { nickname: player.nickname });
+  });
+
   socket.on('kick_player', ({ targetId }) => {
     const lobby = findLobbyByPlayer(socket.id);
     if (!lobby) return;

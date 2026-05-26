@@ -81,17 +81,24 @@
     <div class="player-hand" id="player-hand"></div>
   </div>
 
+  <button id="btn-knock" class="btn-knock" title="Knock on table">👊</button>
+
+  <div class="chat-panel" id="chat-panel">
+    <div class="chat-panel-header">
+      <span>CHAT</span>
+      <button id="btn-chat-toggle" class="btn-chat-toggle">−</button>
+    </div>
+    <div class="chat-entries" id="log-entries"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Chat..." maxlength="200" autocomplete="off">
+      <button id="btn-chat-send" class="btn btn-small">SEND</button>
+    </div>
+  </div>
+
   <div class="game-bottom-bar">
     <div class="game-actions" id="game-actions">
       <button id="btn-draw" class="btn btn-secondary">DRAW</button>
       <button id="btn-end-turn" class="btn btn-primary">END TURN</button>
-    </div>
-    <div class="activity-log" id="activity-log">
-      <div class="log-entries" id="log-entries"></div>
-      <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Chat..." maxlength="200" autocomplete="off">
-        <button id="btn-chat-send" class="btn btn-small">SEND</button>
-      </div>
     </div>
   </div>
 </div>

@@ -94,6 +94,7 @@ const ACTION_DEFS = [
     { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
   ]},
   { type: 'play_again', name: 'Take another turn', desc: 'take another turn', params: [] },
+  { type: 'knock_on_table', name: 'Knock on table', desc: 'knock on the table', params: [] },
 ];
 
 class Game {
