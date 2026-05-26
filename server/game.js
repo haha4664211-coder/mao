@@ -93,6 +93,7 @@ const ACTION_DEFS = [
   { type: 'cannot_play_suit', name: 'Cannot play a specific suit', desc: 'cannot play a {suit}', params: [
     { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
   ]},
+  { type: 'play_again', name: 'Take another turn', desc: 'take another turn', params: [] },
 ];
 
 class Game {

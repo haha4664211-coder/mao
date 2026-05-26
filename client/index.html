@@ -112,25 +112,25 @@
     <div class="rule-creator-body">
       <div class="rc-section">
         <label class="rc-label">Rule name</label>
-        <input type="text" id="rc-rule-name" class="rc-input" placeholder="e.g. Always say Please, No Clubs..." maxlength="40">
+        <input type="text" id="rc-rule-name" class="rc-input" placeholder="e.g. Skip on Kings" maxlength="40">
       </div>
 
       <div class="rc-section">
-        <label class="rc-label">When this rule applies</label>
-        <div class="rc-row rc-trigger-row">
-          <select id="rc-trigger-type" class="rc-select rc-trigger-select"></select>
-          <span class="rc-params-inline" id="rc-trigger-params"></span>
+        <label class="rc-label">When a <span id="rc-when-label">card</span> is played...</label>
+        <div class="rc-row rc-when-row">
+          <span class="rc-inline-label">Suit</span>
+          <select id="rc-when-suit" class="rc-select rc-when-select"></select>
+          <span class="rc-inline-label">Card</span>
+          <select id="rc-when-rank" class="rc-select rc-when-select"></select>
         </div>
-        <div id="rc-conditions-list"></div>
-        <button id="rc-add-condition" class="rc-add-btn">+ Add extra condition</button>
       </div>
 
       <div class="rc-section">
         <label class="rc-label">What happens</label>
         <div class="rc-row rc-action-row">
           <select id="rc-action-type" class="rc-select"></select>
-          <span class="rc-params-inline" id="rc-action-params"></span>
         </div>
+        <div id="rc-action-config" class="rc-action-config"></div>
       </div>
 
       <div class="rc-section rc-preview-section">
