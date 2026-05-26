@@ -720,6 +720,27 @@ function initRuleCreator() {
     rcBtnCreate.textContent = 'CREATING...';
   });
 
+socket.on('rule_created_notification', function() {
+  // This event handler is intended for other players in the lobby.
+  // The rule creator receives `rule_created_detail` instead, which handles closing.
+  // However, in case of any out-of-order events or dropped `rule_created_detail`,
+  // we should ensure the button is reset.
+  rcBtnCreate.disabled = false;
+  rcBtnCreate.textContent = 'CREATE RULE';
+});
+
+socket.on('rule_created_detail', function() {
+  // This event is for the rule creator. The `showBlockRuleApproved` is called from here.
+  rcBtnCreate.disabled = false;
+  rcBtnCreate.textContent = 'CREATE RULE';
+});
+
+socket.on('error', function() {
+  // If any server error occurs, reset the button state
+  rcBtnCreate.disabled = false;
+  rcBtnCreate.textContent = 'CREATE RULE';
+});
+
   rcBtnSkip.addEventListener('click', function() {
     socket.emit('confirm_rule', {
       rule: {

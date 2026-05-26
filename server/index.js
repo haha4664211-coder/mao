@@ -442,38 +442,43 @@ io.on('connection', (socket) => {
   });
 
   socket.on('submit_block_rule', ({ rule }) => {
-    const lobby = findLobbyByPlayer(socket.id);
-    if (!lobby || !lobby.game) return;
-    const game = lobby.game;
-    if (game.state !== 'round_end') return;
-    if (!game.lastWinner || game.lastWinner.id !== socket.id) {
-      socket.emit('error', { message: 'Only the winner can create a rule' });
-      return;
+    try {
+      const lobby = findLobbyByPlayer(socket.id);
+      if (!lobby || !lobby.game) return;
+      const game = lobby.game;
+      if (game.state !== 'round_end') return;
+      if (!game.lastWinner || game.lastWinner.id !== socket.id) {
+        socket.emit('error', { message: 'Only the winner can create a rule' });
+        return;
+      }
+      const validation = game.validateBlockRule(rule);
+      if (!validation.valid) {
+        socket.emit('error', { message: validation.error });
+        return;
+      }
+      const fullRule = {
+        ...rule,
+        type: 'block',
+        createdBy: game.lastWinner.nickname,
+        createdById: socket.id,
+        round: game.round,
+        hidden: true
+      };
+      game.addRule(fullRule);
+      broadcastGameState(game);
+      io.to(lobby.code).emit('rule_created_notification', {
+        round: game.round,
+        ruleCount: game.rules.length,
+        creatorId: socket.id
+      });
+      io.to(socket.id).emit('rule_created_detail', {
+        rule: fullRule,
+        round: game.round
+      });
+    } catch (error) {
+      console.error('Error submitting block rule:', error);
+      socket.emit('error', { message: 'Server error creating rule.' });
     }
-    const validation = game.validateBlockRule(rule);
-    if (!validation.valid) {
-      socket.emit('error', { message: validation.error });
-      return;
-    }
-    const fullRule = {
-      ...rule,
-      type: 'block',
-      createdBy: game.lastWinner.nickname,
-      createdById: socket.id,
-      round: game.round,
-      hidden: true
-    };
-    game.addRule(fullRule);
-    broadcastGameState(game);
-    io.to(lobby.code).emit('rule_created_notification', {
-      round: game.round,
-      ruleCount: game.rules.length,
-      creatorId: socket.id
-    });
-    io.to(socket.id).emit('rule_created_detail', {
-      rule: fullRule,
-      round: game.round
-    });
   });
 
   socket.on('start_new_round', () => {
