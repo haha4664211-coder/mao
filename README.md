@@ -1,6 +1,8 @@
 # MAO — Multiplayer Online Card Game
 
-A private, friend-group implementation of the card game Mao where **rules are hidden** and **punishments are manual**. No bots, no matchmaking, no accounts — just a lobby code and your friends.
+A private, friend-group implementation of the card game Mao where **rules are hidden**, **punishments are voted on**, and **nobody knows what's legal until someone breaks a rule and gets caught**.
+
+No bots, no matchmaking, no accounts — just a lobby code, your friends, and a slowly growing pile of secret rules that only the round winner knows.
 
 ## Quick Start
 
@@ -10,6 +12,14 @@ npm start
 ```
 
 Open `http://localhost:3000` in your browser. Enter a nickname, host a party, share the 6-digit code with friends.
+
+## The Short Version
+
+Mao is a card game where the winner of each round invents a new rule that nobody else knows. Every round adds another secret rule. Players discover rules by watching each other and calling out suspected infractions. If the group agrees you broke a hidden rule, you draw penalty cards. If they don't, the accuser draws instead.
+
+There's no automatic enforcement — the game never tells you what's legal. Everything is social deduction, memory, and bluffing.
+
+The app gives you a visual block-based rule creator (pick triggers like "when a king is played" and actions like "skip the next player") or a free-text AI interpreter if you prefer describing rules in plain English.
 
 ## Project Structure
 
@@ -34,42 +44,16 @@ Open `http://localhost:3000` in your browser. Enter a nickname, host a party, sh
 └── package.json
 ```
 
-## How to Play
-
-### 1. Lobby
-- **Host**: Enter a nickname → click HOST PARTY → share the 6-digit code
-- **Join**: Enter a nickname → click JOIN PARTY → enter the code
-- Host can **kick** players and **start** the game when everyone is ready
-- Max 8 players per lobby
-
-### 2. Gameplay
-- Each player is dealt **5 cards**
-- A turn order is shown visually, but **the game enforces no rules** — anyone can draw, play cards, or end the turn at any time
-- The turn indicator and glow are purely informational
-- **Click a card** in your hand to select it, **click again** to play it to the pile
-- Click the **draw pile** or **DRAW button** to draw a card
-- **END TURN** advances the visual turn indicator
-
-### 3. Rules & Punishment (The Core Mechanic)
-Since Mao is a game of **hidden rules**, there is no automatic rule enforcement. Players enforce rules themselves:
-
-1. Press the **CONFUSED!** button when you believe someone broke a rule
-2. Select the **accused player**, write the **reason**, and set the **penalty** (default 1 card)
-3. All other players vote **GUILTY** or **INNOCENT**
-4. If majority votes **GUILTY** → the accused draws penalty cards
-5. If majority votes **INNOCENT** → the accuser draws penalty cards instead
-
-This is how the group defines and enforces the meta-rules of your specific Mao variant.
-
-### 4. Chat
-A simple chat is available at the bottom of the game screen for discussing rules, arguing about infractions, or trash talk.
-
 ## Features
 
+- **Hidden rule system** — create rules with a visual block builder (card triggers + actions) that only the creator sees
+- **Social punishment** — players call out suspected rule breaks and the group votes
 - **No rule enforcement** — the game never rejects any action. Players decide what's legal
 - **Server-authoritative** — all game state is managed server-side
 - **Reconnection** — refresh the page and auto-rejoin your game (stored in localStorage)
 - **Host migration** — if the host disconnects, a new host is elected
+- **AI rule validation** — describe a rule in plain English and let an LLM validate it
+- **Knock on table** — a dedicated button for when the rules demand a knock
 - **Sound effects** — card play/draw, turn change, and punishment sounds via Web Audio API
 - **Fullscreen** — click the fullscreen button in-game
 - **Responsive** — works on desktop and mobile browsers
