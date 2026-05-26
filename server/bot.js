@@ -254,7 +254,7 @@ class BotController {
     var topCard = this.game.discardPile.length > 0 ? this.game.discardPile[this.game.discardPile.length - 1] : null;
     var mem = this.botMemory.get(playerId);
 
-    this.io.to(this.lobbyCode).emit('card_drawn', { card: result.card, playerId: playerId });
+    this.io.to(this.lobbyCode).emit('card_drawn', { card: result.card, playerId: playerId, faceUp: false });
     this.broadcastGameState();
 
     var canPlay = false;

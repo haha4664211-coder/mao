@@ -236,7 +236,8 @@ io.on('connection', (socket) => {
       return;
     }
     const game = lobby.game;
-    io.to(lobby.code).emit('card_drawn', { card: result.card, playerId: socket.id });
+    socket.broadcast.to(lobby.code).emit('card_drawn', { card: result.card, playerId: socket.id, faceUp: false });
+    socket.emit('card_drawn', { card: result.card, playerId: socket.id, faceUp: true });
     game.endTurn(socket.id);
     broadcastGameState(game);
     io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });

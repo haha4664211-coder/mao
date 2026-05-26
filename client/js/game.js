@@ -122,7 +122,7 @@ socket.on('card_played', function(data) {
 
 socket.on('card_drawn', function(data) {
   sound.play('cardDraw');
-  animateCardDraw(data.card, data.playerId);
+  animateCardDraw(data.card, data.playerId, data.faceUp);
 });
 
 socket.on('punishment_request', function(data) {
@@ -1005,7 +1005,7 @@ function animateCardPlay(card, playerId) {
   }, 3000);
 }
 
-function animateCardDraw(card, playerId) {
+function animateCardDraw(card, playerId, faceUp) {
   if (!card) return;
 
   var gameTable = document.querySelector('.game-table');
@@ -1018,11 +1018,14 @@ function animateCardDraw(card, playerId) {
   var startX = pileRect.left - tableRect.left + (pileRect.width / 2);
   var startY = pileRect.top - tableRect.top;
 
+  var targetX = tableRect.width / 2;
+  var targetY = tableRect.height * 0.75;
+
+  var dx = targetX - startX;
+  var dy = targetY - startY;
+
   var animEl = document.createElement('div');
   animEl.className = 'card-draw-animation';
-
-  var imgSrc = getCardImage(card);
-  var displayName = getCardDisplayName(card);
 
   var playerNick = '';
   if (gameState) {
@@ -1030,20 +1033,24 @@ function animateCardDraw(card, playerId) {
     if (p) playerNick = p.nickname;
   }
 
+  var imgSrc = faceUp ? getCardImage(card) : '/cards/back.png';
+
   animEl.innerHTML =
     '<div class="card-draw-inner">' +
     '<div class="card-draw-label">' + playerNick + ' drew</div>' +
-    '<img src="' + imgSrc + '" alt="' + displayName + '">' +
+    '<img src="' + imgSrc + '" alt="draw">' +
     '</div>';
 
   animEl.style.left = (startX - 50) + 'px';
   animEl.style.top = (startY - 70) + 'px';
+  animEl.style.setProperty('--fly-x', dx + 'px');
+  animEl.style.setProperty('--fly-y', dy + 'px');
 
   gameTable.appendChild(animEl);
 
   setTimeout(function() {
     if (animEl.parentNode) animEl.parentNode.removeChild(animEl);
-  }, 3000);
+  }, 2500);
 }
 
 // Cooldown timer: update UI every second
