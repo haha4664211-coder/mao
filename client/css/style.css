@@ -498,6 +498,8 @@ html, body {
 #screen-game {
   flex-direction: column;
   background: radial-gradient(ellipse at center, #1b3a2d, #0f281e);
+  height: 100vh;
+  height: 100dvh;
 }
 
 .game-top-bar {
@@ -852,6 +854,8 @@ html, body {
   padding: 10px 16px;
   background: var(--bg-secondary);
   border-top: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  z-index: 10;
 }
 
 .btn-knock {
@@ -859,7 +863,7 @@ html, body {
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 50;
+  z-index: 65;
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -903,7 +907,7 @@ html, body {
   position: fixed;
   bottom: 60px;
   right: 16px;
-  z-index: 50;
+  z-index: 60;
   width: 280px;
   height: 320px;
   display: flex;
@@ -1102,13 +1106,144 @@ html, body {
   .other-player .opl-name { font-size: 10px; max-width: 70px; }
   .other-player .opl-avatar { width: 28px; height: 28px; font-size: 13px; }
   .card-play-inner { width: 70px; height: 98px; }
-  .player-hand .table-card { width: 48px; height: 67px; }
-  .table-card { width: 56px; height: 78px; }
-  .card-back-large, .discard-placeholder { width: 64px; height: 89px; }
-  .pile-section { gap: 20px; }
 
-  .game-bottom-bar { flex-direction: column; align-items: stretch; }
-  .activity-log { max-width: none; }
+  #screen-game {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .game-table {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .table-center {
+    gap: 10px;
+    padding: 0 8px;
+  }
+
+  .pile-section {
+    gap: 16px;
+    transform: scale(0.8);
+  }
+
+  .card-back-large, .discard-placeholder {
+    width: 56px;
+    height: 78px;
+  }
+
+  .player-hand {
+    gap: -4px;
+    padding: 6px 8px;
+    min-height: auto;
+  }
+
+  .player-hand .table-card {
+    width: 46px;
+    height: 64px;
+    margin-left: -8px;
+  }
+
+  .player-hand .table-card:first-child {
+    margin-left: 0;
+  }
+
+  .table-card {
+    width: 50px;
+    height: 70px;
+  }
+
+  .game-bottom-bar {
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 12px;
+  }
+
+  .game-actions .btn {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
+  .chat-panel {
+    width: 220px;
+    height: 240px;
+    bottom: 50px;
+    right: 8px;
+  }
+
+  .chat-entries {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .chat-input-row input {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .btn-knock {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-title { font-size: 36px; letter-spacing: 6px; }
+  .menu-card { padding: 20px 16px; }
+  .lobby-container { padding: 20px; }
+  .other-player { min-width: 60px; padding: 6px 10px; }
+  .other-player .opl-avatar { width: 24px; height: 24px; font-size: 11px; }
+
+  .player-hand .table-card {
+    width: 38px;
+    height: 53px;
+    margin-left: -10px;
+  }
+
+  .player-hand .table-card:first-child {
+    margin-left: 0;
+  }
+
+  .table-card {
+    width: 42px;
+    height: 59px;
+  }
+
+  .card-back-large, .discard-placeholder {
+    width: 46px;
+    height: 64px;
+  }
+
+  .pile-section {
+    transform: scale(0.65);
+    gap: 10px;
+  }
+
+  .game-bottom-bar {
+    padding: 4px 8px;
+  }
+
+  .game-actions .btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .chat-panel {
+    width: 180px;
+    height: 200px;
+    bottom: 44px;
+    right: 4px;
+  }
+
+  .btn-knock {
+    width: 34px;
+    height: 34px;
+    font-size: 15px;
+    right: 4px;
+  }
 }
 
 @media (max-width: 480px) {
