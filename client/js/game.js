@@ -430,54 +430,8 @@ function renderActionConfig() {
   var cfg = SIMPLE_ACTIONS[rcState.actionKey];
   if (!cfg) return;
 
-  if (cfg.targets && cfg.targets.length > 0) {
-    var targetRow = document.createElement('div');
-    targetRow.className = 'rc-config-row';
-    var tLabel = document.createElement('span');
-    tLabel.className = 'rc-config-label';
-    tLabel.textContent = 'Who';
-    targetRow.appendChild(tLabel);
-    var tSel = document.createElement('select');
-    tSel.className = 'rc-select rc-config-select';
-    for (var i = 0; i < cfg.targets.length; i++) {
-      var opt = document.createElement('option');
-      opt.value = cfg.targets[i];
-      opt.textContent = TARGET_LABELS[cfg.targets[i]] || cfg.targets[i];
-      if (cfg.targets[i] === rcState.target) opt.selected = true;
-      tSel.appendChild(opt);
-    }
-    tSel.addEventListener('change', function() {
-      rcState.target = tSel.value;
-      updateRulePreview();
-    });
-    targetRow.appendChild(tSel);
-    rcActionConfig.appendChild(targetRow);
-  }
-
-  if (cfg.timing) {
-    var timeRow = document.createElement('div');
-    timeRow.className = 'rc-config-row';
-    var tiLabel = document.createElement('span');
-    tiLabel.className = 'rc-config-label';
-    tiLabel.textContent = 'When';
-    timeRow.appendChild(tiLabel);
-    var tiSel = document.createElement('select');
-    tiSel.className = 'rc-select rc-config-select';
-    var timeOpts = ['now', 'next_round'];
-    for (var j = 0; j < timeOpts.length; j++) {
-      var opt2 = document.createElement('option');
-      opt2.value = timeOpts[j];
-      opt2.textContent = TIMING_LABELS[timeOpts[j]] || timeOpts[j];
-      if (timeOpts[j] === rcState.timing) opt2.selected = true;
-      tiSel.appendChild(opt2);
-    }
-    tiSel.addEventListener('change', function() {
-      rcState.timing = tiSel.value;
-      updateRulePreview();
-    });
-    timeRow.appendChild(tiSel);
-    rcActionConfig.appendChild(timeRow);
-  }
+  var hasParams = cfg.params && cfg.params.length > 0;
+  var hasAdv = (cfg.targets && cfg.targets.length > 0) || cfg.timing;
 
   if (cfg.params) {
     for (var k = 0; k < cfg.params.length; k++) {
@@ -515,6 +469,69 @@ function renderActionConfig() {
       }
       rcActionConfig.appendChild(paramRow);
     }
+  }
+
+  if (hasAdv) {
+    var advDiv = document.createElement('div');
+    advDiv.id = 'rc-action-adv';
+    advDiv.className = 'rc-action-adv' + (rcState.showActionAdv ? '' : ' hidden');
+
+    if (cfg.targets && cfg.targets.length > 0) {
+      var targetRow = document.createElement('div');
+      targetRow.className = 'rc-config-row';
+      var tLabel = document.createElement('span');
+      tLabel.className = 'rc-config-label';
+      tLabel.textContent = 'Who';
+      targetRow.appendChild(tLabel);
+      var tSel = document.createElement('select');
+      tSel.className = 'rc-select rc-config-select';
+      for (var i = 0; i < cfg.targets.length; i++) {
+        var opt = document.createElement('option');
+        opt.value = cfg.targets[i];
+        opt.textContent = TARGET_LABELS[cfg.targets[i]] || cfg.targets[i];
+        if (cfg.targets[i] === rcState.target) opt.selected = true;
+        tSel.appendChild(opt);
+      }
+      tSel.addEventListener('change', function() {
+        rcState.target = tSel.value;
+        updateRulePreview();
+      });
+      targetRow.appendChild(tSel);
+      advDiv.appendChild(targetRow);
+    }
+
+    if (cfg.timing) {
+      var timeRow = document.createElement('div');
+      timeRow.className = 'rc-config-row';
+      var tiLabel = document.createElement('span');
+      tiLabel.className = 'rc-config-label';
+      tiLabel.textContent = 'When';
+      timeRow.appendChild(tiLabel);
+      var tiSel = document.createElement('select');
+      tiSel.className = 'rc-select rc-config-select';
+      var timeOpts = ['now', 'next_round'];
+      for (var j = 0; j < timeOpts.length; j++) {
+        var opt2 = document.createElement('option');
+        opt2.value = timeOpts[j];
+        opt2.textContent = TIMING_LABELS[timeOpts[j]] || timeOpts[j];
+        if (timeOpts[j] === rcState.timing) opt2.selected = true;
+        tiSel.appendChild(opt2);
+      }
+      tiSel.addEventListener('change', function() {
+        rcState.timing = tiSel.value;
+        updateRulePreview();
+      });
+      timeRow.appendChild(tiSel);
+      advDiv.appendChild(timeRow);
+    }
+
+    rcActionConfig.appendChild(advDiv);
+  }
+
+  if (hasParams) {
+    rcActionConfig.classList.remove('hidden');
+  } else if (!rcState.showActionAdv) {
+    rcActionConfig.classList.add('hidden');
   }
 }
 
@@ -757,7 +774,6 @@ function initRuleCreator() {
         rcState.actionParams[p.name] = p.options ? p.options[0] : '';
       }
     }
-    rcActionConfig.classList.add('hidden');
     rcActionGear.classList.remove('rc-adv-toggle--active');
     renderActionConfig();
     updateRulePreview();
@@ -766,7 +782,9 @@ function initRuleCreator() {
   rcActionGear.addEventListener('click', function() {
     rcState.showActionAdv = !rcState.showActionAdv;
     rcActionGear.classList.toggle('rc-adv-toggle--active', rcState.showActionAdv);
-    rcActionConfig.classList.toggle('hidden', !rcState.showActionAdv);
+    var adv = document.getElementById('rc-action-adv');
+    if (adv) adv.classList.toggle('hidden', !rcState.showActionAdv);
+    if (rcState.showActionAdv) rcActionConfig.classList.remove('hidden');
   });
 
   rcAdvToggle.addEventListener('click', function() {
@@ -842,7 +860,6 @@ function showRuleCreator(data) {
   rcWhenRank.value = 'any';
   rcWhenLabel.textContent = 'card';
   rcActionType.value = 'skip_player';
-  rcActionConfig.classList.add('hidden');
   rcActionGear.classList.remove('rc-adv-toggle--active');
   rcAdvToggle.classList.remove('rc-adv-toggle--active');
   rcAdvPanel.classList.add('hidden');
