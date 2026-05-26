@@ -1686,7 +1686,7 @@ html, body {
 
 .rc-trigger-row-item {
   display: grid;
-  grid-template-columns: auto auto auto 1fr auto;
+  grid-template-columns: auto 1fr auto 1fr auto;
   gap: 6px;
   align-items: center;
   padding: 6px 8px;
