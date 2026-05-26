@@ -6,6 +6,9 @@ var AudioManager = {
   musicAudio: null,
   musicGain: null,
   ctx: null,
+  _unlocked: false,
+  _pendingMusic: null,
+  _pendingPlay: false,
 
   init: function() {
     var saved = localStorage.getItem('mao_audio');
@@ -31,27 +34,39 @@ var AudioManager = {
     } catch (e) {}
   },
 
+  unlock: function() {
+    if (this._unlocked) return;
+    this.ensureCtx();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+    this._unlocked = true;
+    if (this._pendingPlay) {
+      this._pendingPlay = false;
+      this._doPlayMusic();
+    }
+  },
+
   ensureCtx: function() {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
   },
 
-  playMusic: function(src) {
-    this.stopMusic();
-    if (!this.musicEnabled) return;
-    this.ensureCtx();
-
+  _doPlayMusic: function() {
     var self = this;
+    var src = self._pendingMusic;
+    self.stopMusic();
+    if (!self.musicEnabled || !src) return;
+
     fetch(src)
       .then(function(r) { return r.arrayBuffer(); })
       .then(function(buf) {
+        if (!self.ctx) return;
         return self.ctx.decodeAudioData(buf);
       })
       .then(function(audioBuf) {
+        if (!audioBuf || !self.ctx) return;
         var source = self.ctx.createBufferSource();
         source.buffer = audioBuf;
         source.loop = true;
@@ -71,7 +86,19 @@ var AudioManager = {
       });
   },
 
+  playMusic: function(src) {
+    this._pendingMusic = src;
+    this._pendingPlay = true;
+    if (this._unlocked) {
+      this._doPlayMusic();
+    } else {
+      this.ensureCtx();
+    }
+  },
+
   stopMusic: function() {
+    this._pendingPlay = false;
+    this._pendingMusic = null;
     if (this.musicAudio) {
       try { this.musicAudio.stop(); } catch (e) {}
       this.musicAudio = null;
@@ -109,7 +136,7 @@ var AudioManager = {
 
   playSfx: function(type, baseVolume) {
     if (!this.sfxEnabled) return;
-    this.ensureCtx();
+    this.unlock();
 
     var vol = (baseVolume || 0.15) * this.sfxVolume;
     try {

@@ -3,7 +3,7 @@ function showScreen(id) {
     s.classList.remove('active');
   });
   document.getElementById('screen-' + id).classList.add('active');
-  if (id === 'menu') {
+  if (id === 'menu' || id === 'lobby' || id === 'game') {
     AudioManager.playMusic('/ui/music/Hidden%20Rules.mp3');
   } else {
     AudioManager.stopMusic();
@@ -70,11 +70,5 @@ function setupSettings() {
 document.addEventListener('DOMContentLoaded', init);
 
 document.addEventListener('click', function() {
-  var audioCtx = window.AudioContext || window.webkitAudioContext;
-  if (audioCtx && typeof audioCtx !== 'undefined') {
-    try {
-      var ctx = new audioCtx();
-      ctx.close();
-    } catch(e) {}
-  }
+  AudioManager.unlock();
 }, { once: true });
