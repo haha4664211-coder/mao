@@ -1042,8 +1042,8 @@ function animateCardDraw(card) {
 
 // Cooldown timer: update UI every second
 var cooldownInterval = setInterval(function() {
-  if (gameState && !canAct()) updateCooldownUI();
-}, 1000);
+  if (gameState) updateCooldownUI();
+}, 200);
 
 // Punish button click delegation on other-players container
 otherPlayersEl.addEventListener('click', function(e) {
