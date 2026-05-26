@@ -426,6 +426,10 @@ io.on('connection', (socket) => {
     player.id = socket.id;
     player.isConnected = true;
     socket.join(code);
+    const lobbyPlayer = lobby.players.find(p =>
+      p.nickname.toLowerCase() === nickname.toLowerCase()
+    );
+    if (lobbyPlayer) lobbyPlayer.id = socket.id;
     const fullState = lobby.game.getFullState(socket.id);
     socket.emit('game_state', fullState);
     broadcastGameState(lobby.game);
@@ -455,18 +459,24 @@ function handleDisconnect(socketId) {
       lobby.game.playerDisconnected(socketId);
       broadcastGameState(lobby.game);
       io.to(code).emit('player_disconnected', { playerId: socketId });
-    }
-
-    if (lobby.hostId === socketId && lobby.players.length > 1) {
-      lobby.removePlayer(socketId);
-      io.to(code).emit('lobby_update', lobby.getPublicState());
-      io.to(code).emit('host_migration', { newHostId: lobby.hostId });
-    } else if (lobby.players.length <= 1) {
-      lobbies.delete(code);
-      io.to(code).emit('lobby_closed');
+      if (lobby.hostId === socketId && lobby.players.length > 1) {
+        const newIdx = playerIdx === 0 ? 1 : 0;
+        lobby.hostId = lobby.players[newIdx].id;
+        lobby.players[newIdx].isHost = true;
+        io.to(code).emit('host_migration', { newHostId: lobby.hostId });
+      }
     } else {
-      lobby.removePlayer(socketId);
-      io.to(code).emit('lobby_update', lobby.getPublicState());
+      if (lobby.hostId === socketId && lobby.players.length > 1) {
+        lobby.removePlayer(socketId);
+        io.to(code).emit('lobby_update', lobby.getPublicState());
+        io.to(code).emit('host_migration', { newHostId: lobby.hostId });
+      } else if (lobby.players.length <= 1) {
+        lobbies.delete(code);
+        io.to(code).emit('lobby_closed');
+      } else {
+        lobby.removePlayer(socketId);
+        io.to(code).emit('lobby_update', lobby.getPublicState());
+      }
     }
     break;
   }
