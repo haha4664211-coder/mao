@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { Lobby } = require('./lobby');
 const { Game } = require('./game');
+const { BotController } = require('./bot');
 
 const app = express();
 const server = http.createServer(app);
@@ -103,13 +104,98 @@ io.on('connection', (socket) => {
 
     const game = new Game(lobby);
     lobby.game = game;
+    lobby.botController = new BotController(game, io, lobby.code);
     io.to(lobby.code).emit('game_started', game.getPublicState());
     for (const player of game.players) {
       const fullState = game.getFullState(player.id);
       io.to(player.id).emit('game_state', fullState);
     }
     io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
+    lobby.botController.triggerBotTurns();
     console.log(`Game started in lobby ${lobby.code}`);
+  });
+
+  socket.on('add_bot', ({ level }) => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby) return;
+    if (lobby.hostId !== socket.id) {
+      socket.emit('error', { message: 'Only host can add bots' });
+      return;
+    }
+    const totalPlayers = lobby.game ? lobby.game.players.length : lobby.players.length;
+    if (totalPlayers >= 8) {
+      socket.emit('error', { message: 'Max 8 players (including bots)' });
+      return;
+    }
+    if (!lobby.game) {
+      const botId = 'bot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      lobby.players.push({ id: botId, nickname: pickBotName(lobby), isReady: true, isHost: false, isBot: true, botLevel: level || 'good' });
+      io.to(lobby.code).emit('lobby_update', lobby.getPublicState());
+    } else {
+      if (!lobby.botController) {
+        lobby.botController = new (require('./bot').BotController)(lobby.game, io, lobby.code);
+      }
+      const bot = lobby.botController.addBot(level || 'good');
+      if (!bot) { socket.emit('error', { message: 'No bot names available' }); return; }
+      lobby.players.push({ id: bot.id, nickname: bot.nickname, isReady: true, isHost: false, isBot: true, botLevel: bot.level });
+      broadcastGameState(lobby.game);
+      io.to(lobby.code).emit('bot_added', bot);
+      scheduleBotTurnIfNeeded(lobby);
+    }
+  });
+
+  socket.on('remove_bot', ({ botId }) => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby) return;
+    if (lobby.hostId !== socket.id) {
+      socket.emit('error', { message: 'Only host can remove bots' });
+      return;
+    }
+    if (lobby.game) {
+      if (lobby.botController) {
+        lobby.botController.removeBot(botId);
+        const lidx = lobby.players.findIndex(p => p.id === botId);
+        if (lidx !== -1) lobby.players.splice(lidx, 1);
+        broadcastGameState(lobby.game);
+        io.to(lobby.code).emit('bot_removed', { botId });
+      }
+    } else {
+      const idx = lobby.players.findIndex(p => p.id === botId);
+      if (idx !== -1) {
+        lobby.players.splice(idx, 1);
+        io.to(lobby.code).emit('lobby_update', lobby.getPublicState());
+      }
+    }
+  });
+
+  socket.on('set_bot_level', ({ botId, level }) => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby) return;
+    if (lobby.hostId !== socket.id) {
+      socket.emit('error', { message: 'Only host can configure bots' });
+      return;
+    }
+    if (lobby.game && lobby.botController) {
+      lobby.botController.setLevel(botId, level);
+      const lp = lobby.players.find(p => p.id === botId);
+      if (lp) lp.botLevel = level;
+      broadcastGameState(lobby.game);
+    } else {
+      const p = lobby.players.find(p => p.id === botId);
+      if (p) p.botLevel = level;
+      io.to(lobby.code).emit('lobby_update', lobby.getPublicState());
+    }
+  });
+
+  socket.on('get_bots', () => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby) return;
+    if (lobby.game && lobby.botController) {
+      socket.emit('bots_list', lobby.botController.getBots());
+    } else {
+      const bots = lobby.players.filter(p => p.isBot).map(p => ({ id: p.id, nickname: p.nickname, level: p.botLevel || 'good' }));
+      socket.emit('bots_list', bots);
+    }
   });
 
   socket.on('play_card', ({ cardIndex }) => {
@@ -132,8 +218,12 @@ io.on('connection', (socket) => {
         winnerNickname: result.winner.nickname,
         round: game.round
       });
+      if (lobby.botController) lobby.botController.onRoundEnd();
     } else {
       io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
+      if (lobby.botController) {
+        scheduleBotTurnIfNeeded(lobby);
+      }
     }
   });
 
@@ -191,6 +281,7 @@ io.on('connection', (socket) => {
     const game = lobby.game;
     broadcastGameState(game);
     io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
+    if (lobby.botController) scheduleBotTurnIfNeeded(lobby);
   });
 
   socket.on('submit_punishment', ({ targetId, reason, amount }) => {
@@ -217,6 +308,7 @@ io.on('connection', (socket) => {
       accuserNickname: lobby.game.getPlayer(socket.id).nickname,
       targetNickname: target.nickname
     });
+    if (lobby.botController) lobby.botController.onPunishmentRequest({ id: punishment.id, accuserId: socket.id, targetId });
   });
 
   socket.on('vote_punishment', ({ punishmentId, approve }) => {
@@ -408,6 +500,9 @@ io.on('connection', (socket) => {
     io.to(lobby.code).emit('new_round', {
       round: lobby.game.round
     });
+    if (lobby.botController) {
+      lobby.botController.triggerBotTurns();
+    }
   });
 
   socket.on('reconnect_game', ({ code, nickname }) => {
@@ -480,6 +575,27 @@ function handleDisconnect(socketId) {
     }
     break;
   }
+}
+
+function scheduleBotTurnIfNeeded(lobby) {
+  if (!lobby.botController) return;
+  var current = lobby.game.getCurrentPlayer();
+  if (current && lobby.botController.isBotPlayer(current.id)) {
+    lobby.botController.scheduleBotTurn(current.id);
+  }
+}
+
+function pickBotName(lobby) {
+  var used = new Set();
+  for (var i = 0; i < lobby.players.length; i++) {
+    used.add(lobby.players[i].nickname.toLowerCase());
+  }
+  var names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Felix', 'Grace', 'Hank', 'Iris', 'Jack', 'Kate', 'Leo'];
+  var shuffled = names.sort(function() { return Math.random() - 0.5; });
+  for (var j = 0; j < shuffled.length; j++) {
+    if (!used.has(shuffled[j].toLowerCase())) return shuffled[j];
+  }
+  return 'Bot' + Math.floor(Math.random() * 1000);
 }
 
 server.listen(PORT, () => {

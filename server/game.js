@@ -104,7 +104,9 @@ class Game {
       id: p.id,
       nickname: p.nickname,
       hand: [],
-      isConnected: true
+      isConnected: true,
+      isBot: p.isBot || false,
+      botLevel: p.botLevel || null
     }));
     this.deck = [];
     this.discardPile = [];

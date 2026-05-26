@@ -121,6 +121,7 @@ socket.on('card_played', function(data) {
 
 socket.on('card_drawn', function(data) {
   sound.play('cardDraw');
+  animateCardDraw(data.card);
 });
 
 socket.on('punishment_request', function(data) {
@@ -999,6 +1000,44 @@ function animateCardPlay(card, playerId) {
   setTimeout(function() {
     if (animEl.parentNode) animEl.parentNode.removeChild(animEl);
   }, 3000);
+}
+
+function animateCardDraw(card) {
+  if (!card) return;
+
+  var drawPileEl = document.getElementById('draw-pile');
+  if (!drawPileEl) return;
+  var pileRect = drawPileEl.getBoundingClientRect();
+
+  var centerX = window.innerWidth / 2;
+  var centerY = window.innerHeight / 2;
+
+  var animEl = document.createElement('div');
+  animEl.className = 'card-draw-animation';
+
+  var imgSrc = getCardImage(card);
+  var displayName = getCardDisplayName(card);
+
+  animEl.innerHTML =
+    '<div class="card-draw-inner">' +
+    '<img src="' + imgSrc + '" alt="' + displayName + '">' +
+    '</div>';
+
+  animEl.style.left = (pileRect.left + pileRect.width / 2 - 50) + 'px';
+  animEl.style.top = (pileRect.top + pileRect.height / 2 - 70) + 'px';
+
+  document.body.appendChild(animEl);
+
+  requestAnimationFrame(function() {
+    animEl.style.left = (centerX - 50) + 'px';
+    animEl.style.top = (centerY - 70) + 'px';
+    animEl.style.transform = 'rotate(720deg) scale(1.2)';
+    animEl.style.opacity = '0';
+  });
+
+  setTimeout(function() {
+    if (animEl.parentNode) animEl.parentNode.removeChild(animEl);
+  }, 600);
 }
 
 // Cooldown timer: update UI every second
