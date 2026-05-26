@@ -36,6 +36,11 @@ const TRIGGER_DEFS = [
     { name: 'from', label: 'From', type: 'select', options: ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'] },
     { name: 'to', label: 'To', type: 'select', options: ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'] }
   ] },
+  { type: 'numeric_offset', name: 'Numeric offset play', desc: 'offset play ±{offset} ({suitConstraint})', params: [
+    { name: 'offset', label: 'Offset', type: 'number', min: 1, max: 13 },
+    { name: 'direction', label: 'Direction', type: 'select', options: ['positive', 'negative', 'both'] },
+    { name: 'suitConstraint', label: 'Suit', type: 'select', options: ['any', 'same_suit', 'same_color', 'diff_color', 'specific'] }
+  ] },
 ];
 
 const CONDITION_DEFS = [
@@ -277,6 +282,19 @@ class Game {
       if (!SUIT_SETS[from] || !SUIT_SETS[to]) return { valid: false, error: 'Invalid suit value' };
       const intersection = [...SUIT_SETS[from]].filter(s => SUIT_SETS[to].has(s));
       if (intersection.length > 0) return { valid: false, error: 'From and to suits cannot overlap' };
+    }
+
+    if (rule.trigger.type === 'numeric_offset') {
+      const p = rule.trigger.params || {};
+      if (typeof p.offset !== 'number' || p.offset < 1 || p.offset > 13) return { valid: false, error: 'Offset must be between 1 and 13' };
+      if (!['positive', 'negative', 'both'].includes(p.direction)) return { valid: false, error: 'Invalid direction' };
+      if (!['any', 'same_suit', 'same_color', 'diff_color', 'specific'].includes(p.suitConstraint)) return { valid: false, error: 'Invalid suit constraint' };
+      if (p.suitConstraint === 'specific') {
+        if (!Array.isArray(p.specificSuits) || p.specificSuits.length === 0) return { valid: false, error: 'Must specify at least one suit' };
+        for (const s of p.specificSuits) {
+          if (!SUITS.includes(s)) return { valid: false, error: 'Invalid specific suit' };
+        }
+      }
     }
 
     if (!rule.actions || rule.actions.length === 0) return { valid: false, error: 'At least one action is required' };

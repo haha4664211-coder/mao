@@ -254,6 +254,11 @@ var rcSuitChange = document.getElementById('rc-suit-change');
 var rcSuitFrom = document.getElementById('rc-suit-from');
 var rcSuitTo = document.getElementById('rc-suit-to');
 var rcSuitWarning = document.getElementById('rc-suit-warning');
+var rcNumericOffset = document.getElementById('rc-numeric-offset');
+var rcNumOffset = document.getElementById('rc-num-offset');
+var rcNumDirection = document.getElementById('rc-num-direction');
+var rcNumSuit = document.getElementById('rc-num-suit');
+var rcNumSpecificSuits = document.getElementById('rc-num-specific-suits');
 
 var SUIT_NAMES = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
 
@@ -444,6 +449,19 @@ function updateRulePreview() {
     rcPreview.textContent = 'When suit changes from ' + fromLabel + ' to ' + toLabel + ', ' + actionDesc + ' (or draw 1 card)';
     return;
   }
+  if (rcState.triggerKey === 'numeric_offset') {
+    var dirLabel = { positive: '+', negative: '−', both: '±' }[rcState.numericDirection] || '+';
+    var suitLabels = {
+      any: 'any suit',
+      same_suit: 'same suit',
+      same_color: 'same color',
+      diff_color: 'different color',
+      specific: (rcState.numericSpecificSuits && rcState.numericSpecificSuits.length > 0 ? rcState.numericSpecificSuits.join('/') : 'specific suits')
+    };
+    var sLabel = suitLabels[rcState.numericSuitConstraint] || 'any suit';
+    rcPreview.textContent = 'When a card is played with offset ' + dirLabel + rcState.numericOffset + ' (' + sLabel + '), ' + actionDesc + ' (or draw 1 card)';
+    return;
+  }
   var parts = [];
   for (var i = 0; i < rcState.triggerRows.length; i++) {
     var row = rcState.triggerRows[i];
@@ -488,11 +506,19 @@ function buildRuleForSubmit() {
     }
   };
 
-  var triggerType = rcState.triggerKey === 'suit_change' ? 'after_suit_change' : 'after_card_played';
+  var triggerType = 'after_card_played';
   var triggerParams = {};
   if (rcState.triggerKey === 'suit_change') {
-    triggerParams.from = rcState.suitChangeFrom;
-    triggerParams.to = rcState.suitChangeTo;
+    triggerType = 'after_suit_change';
+    triggerParams = { from: rcState.suitChangeFrom, to: rcState.suitChangeTo };
+  } else if (rcState.triggerKey === 'numeric_offset') {
+    triggerType = 'numeric_offset';
+    triggerParams = {
+      offset: parseInt(rcState.numericOffset, 10) || 1,
+      direction: rcState.numericDirection,
+      suitConstraint: rcState.numericSuitConstraint,
+      specificSuits: rcState.numericSuitConstraint === 'specific' ? (rcState.numericSpecificSuits || []) : []
+    };
   }
 
   return {
@@ -598,16 +624,19 @@ function initRuleCreator() {
 
   rcTriggerType.addEventListener('change', function() {
     rcState.triggerKey = rcTriggerType.value;
+    rcTriggerRowsEl.classList.add('hidden');
+    rcAddTriggerRow.classList.add('hidden');
+    rcSuitChange.classList.add('hidden');
+    rcNumericOffset.classList.add('hidden');
+    rcBtnCreate.disabled = false;
     if (rcTriggerType.value === 'suit_change') {
-      rcTriggerRowsEl.classList.add('hidden');
-      rcAddTriggerRow.classList.add('hidden');
       rcSuitChange.classList.remove('hidden');
       validateSuitChange();
+    } else if (rcTriggerType.value === 'numeric_offset') {
+      rcNumericOffset.classList.remove('hidden');
     } else {
       rcTriggerRowsEl.classList.remove('hidden');
       rcAddTriggerRow.classList.remove('hidden');
-      rcSuitChange.classList.add('hidden');
-      rcBtnCreate.disabled = false;
     }
     updateRulePreview();
   });
@@ -622,6 +651,39 @@ function initRuleCreator() {
     rcState.suitChangeTo = rcSuitTo.value;
     validateSuitChange();
     updateRulePreview();
+  });
+
+  rcNumOffset.addEventListener('input', function() {
+    rcState.numericOffset = parseInt(rcNumOffset.value, 10) || 1;
+    if (rcState.numericOffset < 1) rcState.numericOffset = 1;
+    if (rcState.numericOffset > 13) rcState.numericOffset = 13;
+    updateRulePreview();
+  });
+
+  rcNumDirection.addEventListener('change', function() {
+    rcState.numericDirection = rcNumDirection.value;
+    updateRulePreview();
+  });
+
+  rcNumSuit.addEventListener('change', function() {
+    rcState.numericSuitConstraint = rcNumSuit.value;
+    if (rcNumSuit.value === 'specific') {
+      rcNumSpecificSuits.classList.remove('hidden');
+    } else {
+      rcNumSpecificSuits.classList.add('hidden');
+    }
+    updateRulePreview();
+  });
+
+  rcNumSpecificSuits.addEventListener('change', function(e) {
+    if (e.target && e.target.classList.contains('rc-suit-check')) {
+      rcState.numericSpecificSuits = [];
+      var checks = rcNumSpecificSuits.querySelectorAll('.rc-suit-check:checked');
+      for (var c = 0; c < checks.length; c++) {
+        rcState.numericSpecificSuits.push(checks[c].value);
+      }
+      updateRulePreview();
+    }
   });
 
   rcAddTriggerRow.addEventListener('click', function() {
@@ -664,25 +726,38 @@ function showRuleCreator(data) {
     actionParams: {},
     suitChangeFrom: 'any',
     suitChangeTo: 'any',
+    numericOffset: 1,
+    numericDirection: 'positive',
+    numericSuitConstraint: 'any',
+    numericSpecificSuits: [],
     showActionAdv: false,
     playerCount: data.playerCount || 4
   };
   rcRuleName.value = '';
   populateSelect(rcTriggerType, [
     { value: 'card_played', label: 'A card is played' },
-    { value: 'suit_change', label: 'Suit changes' }
+    { value: 'suit_change', label: 'Suit changes' },
+    { value: 'numeric_offset', label: 'Numeric offset play' }
   ], 'card_played');
   populateSelect(rcSuitFrom, SUIT_NAMES.map(function(s) { return { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }), 'any');
   populateSelect(rcSuitTo, SUIT_NAMES.map(function(s) { return { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }), 'any');
   rcActionType.value = 'skip_player';
   rcActionGear.classList.remove('rc-adv-toggle--active');
   rcActionGear.classList.add('hidden');
+  rcNumOffset.value = 1;
+  rcNumDirection.value = 'positive';
+  rcNumSuit.value = 'any';
+  rcNumSpecificSuits.classList.add('hidden');
+  var checks = rcNumSpecificSuits.querySelectorAll('.rc-suit-check');
+  for (var ci = 0; ci < checks.length; ci++) checks[ci].checked = false;
   renderTriggerRows();
   renderActionConfig();
   rcTriggerRowsEl.classList.remove('hidden');
   rcAddTriggerRow.classList.remove('hidden');
   rcSuitChange.classList.add('hidden');
   rcSuitWarning.classList.add('hidden');
+  rcNumericOffset.classList.add('hidden');
+  rcNumSpecificSuits.classList.add('hidden');
   rcBtnCreate.disabled = false;
   rcBtnCreate.textContent = 'CREATE RULE';
   updateRulePreview();

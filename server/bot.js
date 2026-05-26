@@ -507,10 +507,12 @@ class BotController {
         for (var key in sa.params) actionObj.params[key] = sa.params[key];
       }
 
-      // 20% chance to create a suit-change rule instead
-      var useSuitChange = Math.random() < 0.2;
+      // 15% chance for suit-change, 15% for numeric offset, 70% standard
+      var triggerRand = Math.random();
       var trigger = { type: 'after_card_played', params: {} };
-      if (useSuitChange) {
+
+      if (triggerRand < 0.15) {
+        // Suit change trigger
         var botSuitKeys = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
         var botSuitSets = {
           any: ['spades', 'clubs', 'diamonds', 'hearts'],
@@ -527,6 +529,22 @@ class BotController {
           toSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
         } while (botSuitSets[fromSuit].some(function(s) { return botSuitSets[toSuit].indexOf(s) !== -1; }));
         trigger = { type: 'after_suit_change', params: { from: fromSuit, to: toSuit } };
+      } else if (triggerRand < 0.3) {
+        // Numeric offset trigger
+        var botDirections = ['positive', 'negative', 'both'];
+        var botSuits = ['any', 'same_suit', 'same_color', 'diff_color'];
+        var offset = Math.floor(Math.random() * 5) + 1;
+        var direction = botDirections[Math.floor(Math.random() * botDirections.length)];
+        var suitConstraint = botSuits[Math.floor(Math.random() * botSuits.length)];
+        trigger = {
+          type: 'numeric_offset',
+          params: {
+            offset: offset,
+            direction: direction,
+            suitConstraint: suitConstraint,
+            specificSuits: []
+          }
+        };
       }
 
       var name = 'Bot Rule ' + (self.game.rules.length + 1);

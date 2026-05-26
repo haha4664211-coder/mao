@@ -151,6 +151,36 @@
           </div>
           <div id="rc-suit-warning" class="rc-suit-warning hidden">From and To suits cannot overlap</div>
         </div>
+        <div id="rc-numeric-offset" class="rc-numeric-offset hidden">
+          <div class="rc-config-row">
+            <span class="rc-config-label">Offset</span>
+            <input type="number" id="rc-num-offset" class="rc-input rc-config-input rc-config-number" min="1" max="13" value="1">
+          </div>
+          <div class="rc-config-row">
+            <span class="rc-config-label">Direction</span>
+            <select id="rc-num-direction" class="rc-select rc-config-select">
+              <option value="positive">Positive (+)</option>
+              <option value="negative">Negative (−)</option>
+              <option value="both">Both (±)</option>
+            </select>
+          </div>
+          <div class="rc-config-row">
+            <span class="rc-config-label">Suit</span>
+            <select id="rc-num-suit" class="rc-select rc-config-select">
+              <option value="any">Any suit</option>
+              <option value="same_suit">Same suit only</option>
+              <option value="same_color">Same color only</option>
+              <option value="diff_color">Different color only</option>
+              <option value="specific">Specific suits...</option>
+            </select>
+          </div>
+          <div id="rc-num-specific-suits" class="rc-num-specific-suits hidden">
+            <label class="rc-checkbox-label"><input type="checkbox" value="spades" class="rc-suit-check"> Spades</label>
+            <label class="rc-checkbox-label"><input type="checkbox" value="clubs" class="rc-suit-check"> Clubs</label>
+            <label class="rc-checkbox-label"><input type="checkbox" value="diamonds" class="rc-suit-check"> Diamonds</label>
+            <label class="rc-checkbox-label"><input type="checkbox" value="hearts" class="rc-suit-check"> Hearts</label>
+          </div>
+        </div>
       </div>
 
       <div class="rc-section">
