@@ -500,7 +500,16 @@ html, body {
   background: radial-gradient(ellipse at center, #1b3a2d, #0f281e);
   height: 100vh;
   height: 100dvh;
+  overflow: hidden;
 }
+
+/* ============ Z-INDEX LAYERS ============
+   1   – game-table / other-players / table-center
+   5   – game-bottom-zone / player-hand / game-bottom-bar
+   60  – chat-panel
+   65  – btn-knock
+   100 – card-play-animation
+   ========================================== */
 
 .game-top-bar {
   display: flex;
@@ -510,6 +519,7 @@ html, body {
   background: rgba(0,0,0,0.5);
   border-bottom: 1px solid rgba(255,255,255,0.05);
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .game-info {
@@ -540,6 +550,8 @@ html, body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  min-height: 0;
+  z-index: 1;
 }
 
 .other-players {
@@ -824,11 +836,12 @@ html, body {
   display: flex;
   justify-content: center;
   gap: 6px;
-  padding: 12px 20px;
+  padding: 8px 20px;
   overflow-x: auto;
-  min-height: 110px;
-  background: rgba(0,0,0,0.2);
-  border-top: 1px solid rgba(255,255,255,0.05);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+  background: rgba(0,0,0,0.15);
 }
 
 .player-hand .table-card {
@@ -847,15 +860,23 @@ html, body {
   transform: translateY(-12px);
 }
 
+.game-bottom-zone {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 5;
+  position: relative;
+}
+
 .game-bottom-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   background: var(--bg-secondary);
   border-top: 1px solid rgba(255,255,255,0.06);
-  position: relative;
-  z-index: 10;
+  flex-shrink: 0;
 }
 
 .btn-knock {
@@ -905,8 +926,9 @@ html, body {
 
 .chat-panel {
   position: fixed;
-  bottom: 60px;
+  top: 50px;
   right: 16px;
+  bottom: auto;
   z-index: 60;
   width: 280px;
   height: 320px;
@@ -1109,7 +1131,6 @@ html, body {
 
   #screen-game {
     height: 100dvh;
-    overflow: hidden;
   }
 
   .game-table {
@@ -1118,13 +1139,13 @@ html, body {
   }
 
   .table-center {
-    gap: 10px;
-    padding: 0 8px;
+    gap: 8px;
+    padding: 0;
   }
 
   .pile-section {
-    gap: 16px;
-    transform: scale(0.8);
+    gap: 12px;
+    transform: scale(0.75);
   }
 
   .card-back-large, .discard-placeholder {
@@ -1132,32 +1153,47 @@ html, body {
     height: 78px;
   }
 
+  .game-bottom-zone {
+    background: rgba(0,0,0,0.15);
+  }
+
   .player-hand {
-    gap: -4px;
-    padding: 6px 8px;
-    min-height: auto;
+    justify-content: center;
+    gap: 0;
+    padding: 8px 16px;
+    overflow-x: visible;
   }
 
   .player-hand .table-card {
-    width: 46px;
-    height: 64px;
-    margin-left: -8px;
+    width: 14vw;
+    min-width: 44px;
+    max-width: 58px;
+    height: auto;
+    aspect-ratio: 5 / 7;
+    margin-left: -22px;
+    flex-shrink: 0;
   }
 
   .player-hand .table-card:first-child {
     margin-left: 0;
   }
 
+  .player-hand .table-card.selected,
+  .player-hand .table-card:hover {
+    transform: translateY(-8px);
+  }
+
   .table-card {
-    width: 50px;
-    height: 70px;
+    width: 14vw;
+    min-width: 44px;
+    max-width: 58px;
+    height: auto;
+    aspect-ratio: 5 / 7;
   }
 
   .game-bottom-bar {
-    flex-direction: row;
-    justify-content: center;
-    gap: 8px;
     padding: 6px 12px;
+    gap: 8px;
   }
 
   .game-actions .btn {
@@ -1166,20 +1202,41 @@ html, body {
   }
 
   .chat-panel {
-    width: 220px;
-    height: 240px;
-    bottom: 50px;
+    max-width: 170px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    top: 44px;
     right: 8px;
   }
 
-  .chat-entries {
-    font-size: 11px;
+  .chat-panel-header {
     padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .btn-chat-toggle {
+    font-size: 12px;
+  }
+
+  .chat-entries {
+    font-size: 10px;
+    padding: 3px 6px;
+    gap: 1px;
+  }
+
+  .chat-input-row {
+    padding: 3px 6px;
   }
 
   .chat-input-row input {
-    font-size: 11px;
-    padding: 4px 8px;
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+
+  .chat-panel--min {
+    max-height: none !important;
+    height: auto !important;
   }
 
   .btn-knock {
@@ -1197,19 +1254,9 @@ html, body {
   .other-player { min-width: 60px; padding: 6px 10px; }
   .other-player .opl-avatar { width: 24px; height: 24px; font-size: 11px; }
 
-  .player-hand .table-card {
-    width: 38px;
-    height: 53px;
-    margin-left: -10px;
-  }
-
-  .player-hand .table-card:first-child {
-    margin-left: 0;
-  }
-
-  .table-card {
-    width: 42px;
-    height: 59px;
+  .pile-section {
+    transform: scale(0.6);
+    gap: 8px;
   }
 
   .card-back-large, .discard-placeholder {
@@ -1217,9 +1264,34 @@ html, body {
     height: 64px;
   }
 
-  .pile-section {
-    transform: scale(0.65);
-    gap: 10px;
+  .player-hand {
+    padding: 6px 12px;
+  }
+
+  .player-hand .table-card {
+    width: 14vw;
+    min-width: 36px;
+    max-width: 48px;
+    height: auto;
+    aspect-ratio: 5 / 7;
+    margin-left: -18px;
+  }
+
+  .player-hand .table-card:first-child {
+    margin-left: 0;
+  }
+
+  .player-hand .table-card.selected,
+  .player-hand .table-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .table-card {
+    width: 14vw;
+    min-width: 36px;
+    max-width: 48px;
+    height: auto;
+    aspect-ratio: 5 / 7;
   }
 
   .game-bottom-bar {
@@ -1232,9 +1304,11 @@ html, body {
   }
 
   .chat-panel {
-    width: 180px;
-    height: 200px;
-    bottom: 44px;
+    max-width: 150px;
+    max-height: 130px;
+    width: auto;
+    height: auto;
+    top: 38px;
     right: 4px;
   }
 
@@ -1244,22 +1318,6 @@ html, body {
     font-size: 15px;
     right: 4px;
   }
-}
-
-@media (max-width: 480px) {
-  .game-title { font-size: 36px; letter-spacing: 6px; }
-  .menu-card { padding: 20px 16px; }
-  .lobby-container { padding: 20px; }
-  .other-player { min-width: 60px; padding: 6px 10px; }
-  .other-player .opl-avatar { width: 24px; height: 24px; font-size: 11px; }
-  .card-play-inner { width: 56px; height: 78px; }
-  .player-hand .table-card { width: 40px; height: 56px; }
-  .table-card { width: 48px; height: 67px; }
-  .card-back-large, .discard-placeholder { width: 56px; height: 78px; }
-  .rule-creator-content { width: 95%; max-width: 95%; padding: 16px; }
-  .rule-creator-content h3 { font-size: 20px; }
-  .rc-block-row { flex-wrap: wrap; }
-  .rc-select { max-width: 160px; }
 }
 
 /* ============ RULE BLOCK CREATOR ============ */
