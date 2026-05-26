@@ -131,7 +131,7 @@ class BotController {
   }
 
   scheduleBotTurn(playerId, delay) {
-    if (!delay) delay = 800 + Math.random() * 1200;
+    if (!delay) delay = 3000 + Math.random() * 1000;
     var self = this;
     setTimeout(function() {
       try {
@@ -254,7 +254,7 @@ class BotController {
     var topCard = this.game.discardPile.length > 0 ? this.game.discardPile[this.game.discardPile.length - 1] : null;
     var mem = this.botMemory.get(playerId);
 
-    this.io.to(playerId).emit('card_drawn', { card: result.card });
+    this.io.to(this.lobbyCode).emit('card_drawn', { card: result.card, playerId: playerId });
     this.broadcastGameState();
 
     var canPlay = false;

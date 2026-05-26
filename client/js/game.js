@@ -122,7 +122,7 @@ socket.on('card_played', function(data) {
 
 socket.on('card_drawn', function(data) {
   sound.play('cardDraw');
-  animateCardDraw(data.card);
+  animateCardDraw(data.card, data.playerId);
 });
 
 socket.on('punishment_request', function(data) {
@@ -1005,7 +1005,7 @@ function animateCardPlay(card, playerId) {
   }, 3000);
 }
 
-function animateCardDraw(card) {
+function animateCardDraw(card, playerId) {
   if (!card) return;
 
   var gameTable = document.querySelector('.game-table');
@@ -1024,9 +1024,15 @@ function animateCardDraw(card) {
   var imgSrc = getCardImage(card);
   var displayName = getCardDisplayName(card);
 
+  var playerNick = '';
+  if (gameState) {
+    var p = gameState.players.find(function(p) { return p.id === playerId; });
+    if (p) playerNick = p.nickname;
+  }
+
   animEl.innerHTML =
     '<div class="card-draw-inner">' +
-    '<div class="card-draw-label">DREW</div>' +
+    '<div class="card-draw-label">' + playerNick + ' drew</div>' +
     '<img src="' + imgSrc + '" alt="' + displayName + '">' +
     '</div>';
 
