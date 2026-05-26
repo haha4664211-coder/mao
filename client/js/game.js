@@ -1229,6 +1229,10 @@ socket.on('knock', function(data) {
   addLogEntry({ nickname: data.nickname, message: '👊 knocks on the table!' });
 });
 
+socket.on('chat_message', function(data) {
+  addLogEntry({ nickname: data.nickname, message: data.message });
+});
+
 btnChatToggle.addEventListener('click', function() {
   var panel = document.getElementById('chat-panel');
   var minimized = panel.classList.toggle('chat-panel--min');
