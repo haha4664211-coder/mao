@@ -1,6 +1,91 @@
 const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
 const RANKS = ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
 
+const TRIGGER_DEFS = [
+  { type: 'after_card_played', name: 'After card played', desc: 'a card is played', params: [] },
+  { type: 'before_turn', name: 'Before turn', desc: 'a turn begins', params: [] },
+  { type: 'after_drawing', name: 'After drawing', desc: 'a card is drawn', params: [] },
+  { type: 'after_punishment', name: 'After punishment', desc: 'a player is punished', params: [] },
+  { type: 'after_specific_rank', name: 'After specific rank', desc: 'a {rank} is played', params: [
+    { name: 'rank', label: 'Rank', type: 'select', options: ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'joker'] }
+  ]},
+  { type: 'after_specific_suit', name: 'After specific suit', desc: 'a {suit} is played', params: [
+    { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
+  ]},
+  { type: 'after_red_black', name: 'After red/black card', desc: 'a {color} card is played', params: [
+    { name: 'color', label: 'Color', type: 'select', options: ['red', 'black'] }
+  ]},
+  { type: 'after_card_combo', name: 'After card combo', desc: 'a {combo} combo is formed', params: [
+    { name: 'combo', label: 'Combo type', type: 'select', options: ['pair', 'run', 'flush', 'same suit'] }
+  ]},
+  { type: 'after_speaking', name: 'After speaking', desc: 'someone speaks', params: [] },
+  { type: 'after_saying_word', name: 'After saying word', desc: 'someone says "{word}"', params: [
+    { name: 'word', label: 'Word or phrase', type: 'string' }
+  ]},
+  { type: 'random_chance', name: 'Random chance', desc: 'random {chance}% chance per turn', params: [
+    { name: 'chance', label: 'Chance (%)', type: 'number', min: 1, max: 100 }
+  ]},
+];
+
+const CONDITION_DEFS = [
+  { type: 'specific_suit', name: 'Specific suit', desc: 'card suit is {suit}', params: [
+    { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
+  ]},
+  { type: 'specific_rank', name: 'Specific rank', desc: 'card rank is {rank}', params: [
+    { name: 'rank', label: 'Rank', type: 'select', options: ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'joker'] }
+  ]},
+  { type: 'red_black', name: 'Red/black', desc: 'card color is {color}', params: [
+    { name: 'color', label: 'Color', type: 'select', options: ['red', 'black'] }
+  ]},
+  { type: 'even_odd', name: 'Even/odd', desc: 'card rank is {parity}', params: [
+    { name: 'parity', label: 'Parity', type: 'select', options: ['even', 'odd'] }
+  ]},
+  { type: 'consecutive_cards', name: 'Consecutive cards', desc: 'at least {count} cards are played in a row', params: [
+    { name: 'count', label: 'Count', type: 'number', min: 2, max: 10 }
+  ]},
+  { type: 'repeated_actions', name: 'Repeated actions', desc: 'same action is repeated {count} times', params: [
+    { name: 'count', label: 'Count', type: 'number', min: 2, max: 10 }
+  ]},
+  { type: 'player_count', name: 'Player count', desc: 'there are {operator} {count} players', params: [
+    { name: 'operator', label: 'Comparison', type: 'select', options: ['exactly', 'at least', 'at most'] },
+    { name: 'count', label: 'Count', type: 'number', min: 2, max: 8 }
+  ]},
+  { type: 'current_direction', name: 'Current direction', desc: 'direction is {direction}', params: [
+    { name: 'direction', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'] }
+  ]},
+  { type: 'card_amount_in_hand', name: 'Cards in hand', desc: 'player has {operator} {count} cards', params: [
+    { name: 'operator', label: 'Comparison', type: 'select', options: ['exactly', 'at least', 'at most', 'less than', 'more than'] },
+    { name: 'count', label: 'Count', type: 'number', min: 0, max: 52 }
+  ]},
+];
+
+const ACTION_DEFS = [
+  { type: 'force_draw_cards', name: 'Force draw cards', desc: 'force them to draw {count} cards', params: [
+    { name: 'count', label: 'Cards to draw', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'skip_turn', name: 'Skip turn', desc: 'skip their next turn', params: [] },
+  { type: 'reverse_direction', name: 'Reverse direction', desc: 'reverse turn order', params: [] },
+  { type: 'must_say_phrase', name: 'Must say phrase', desc: 'make them say "{phrase}"', params: [
+    { name: 'phrase', label: 'Required phrase', type: 'string' }
+  ]},
+  { type: 'cannot_say_phrase', name: 'Cannot say phrase', desc: 'forbid saying "{phrase}"', params: [
+    { name: 'phrase', label: 'Forbidden phrase', type: 'string' }
+  ]},
+  { type: 'punish_player', name: 'Punish player', desc: 'give them {count} penalty card(s)', params: [
+    { name: 'count', label: 'Cards to give', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'punish_everyone', name: 'Punish everyone', desc: 'give everyone {count} penalty card(s)', params: [
+    { name: 'count', label: 'Cards to give', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'reveal_card', name: 'Reveal card', desc: 'reveal a random card from their hand', params: [] },
+  { type: 'mute_player', name: 'Mute player', desc: 'mute them for {turns} turn(s)', params: [
+    { name: 'turns', label: 'Number of turns', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'change_active_suit', name: 'Change active suit', desc: 'change active suit to {suit}', params: [
+    { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
+  ]},
+];
+
 class Game {
   constructor(lobby) {
     this.lobby = lobby;
@@ -119,7 +204,34 @@ class Game {
   }
 
   addRule(rule) {
+    rule.hidden = rule.hidden !== false;
     this.rules.push(rule);
+  }
+
+  validateBlockRule(rule) {
+    if (!rule || !rule.name || rule.name.trim().length === 0) return { valid: false, error: 'Rule must have a name' };
+    if (rule.name.length > 60) return { valid: false, error: 'Rule name too long' };
+
+    const triggerDef = TRIGGER_DEFS.find(t => t.type === rule.trigger?.type);
+    if (!triggerDef) return { valid: false, error: 'Invalid trigger type' };
+
+    if (!rule.actions || rule.actions.length === 0) return { valid: false, error: 'At least one action is required' };
+    if (rule.actions.length > 5) return { valid: false, error: 'Too many actions (max 5)' };
+
+    for (const action of rule.actions) {
+      const def = ACTION_DEFS.find(a => a.type === action.type);
+      if (!def) return { valid: false, error: `Invalid action type: ${action.type}` };
+    }
+
+    if (rule.conditions) {
+      if (rule.conditions.length > 5) return { valid: false, error: 'Too many conditions (max 5)' };
+      for (const cond of rule.conditions) {
+        const def = CONDITION_DEFS.find(c => c.type === cond.type);
+        if (!def) return { valid: false, error: `Invalid condition type: ${cond.type}` };
+      }
+    }
+
+    return { valid: true };
   }
 
   newRound() {
@@ -303,7 +415,13 @@ class Game {
         ? this.discardPile[this.discardPile.length - 1] : null,
       state: this.state,
       round: this.round,
-      rules: this.rules,
+      rules: forPlayerId
+        ? this.rules.map(r => {
+            if (!r.hidden) return r;
+            if (r.createdById === forPlayerId) return r;
+            return { hidden: true, round: r.round, name: '???' };
+          })
+        : this.rules,
       punishments: this.punishments.filter(p => !p.resolved).map(p => ({
         id: p.id,
         accuserId: p.accuserId,
@@ -340,4 +458,4 @@ class Game {
   }
 }
 
-module.exports = { Game };
+module.exports = { Game, TRIGGER_DEFS, CONDITION_DEFS, ACTION_DEFS };

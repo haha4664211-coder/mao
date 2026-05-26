@@ -130,8 +130,7 @@ io.on('connection', (socket) => {
       io.to(lobby.code).emit('round_won', {
         winnerId: result.winner.id,
         winnerNickname: result.winner.nickname,
-        round: game.round,
-        rules: game.rules
+        round: game.round
       });
     } else {
       io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
@@ -344,11 +343,52 @@ io.on('connection', (socket) => {
   socket.on('confirm_rule', ({ rule }) => {
     const lobby = findLobbyByPlayer(socket.id);
     if (!lobby || !lobby.game) return;
+    if (rule.revealed === undefined) {
+      rule.hidden = false;
+    } else {
+      rule.hidden = !rule.revealed;
+    }
+    rule.createdById = socket.id;
     lobby.game.addRule(rule);
+    broadcastGameState(lobby.game);
     io.to(lobby.code).emit('rule_created', {
       rule,
-      round: lobby.game.round,
-      rules: lobby.game.rules
+      round: lobby.game.round
+    });
+  });
+
+  socket.on('submit_block_rule', ({ rule }) => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby || !lobby.game) return;
+    const game = lobby.game;
+    if (game.state !== 'round_end') return;
+    if (!game.lastWinner || game.lastWinner.id !== socket.id) {
+      socket.emit('error', { message: 'Only the winner can create a rule' });
+      return;
+    }
+    const validation = game.validateBlockRule(rule);
+    if (!validation.valid) {
+      socket.emit('error', { message: validation.error });
+      return;
+    }
+    const fullRule = {
+      ...rule,
+      type: 'block',
+      createdBy: game.lastWinner.nickname,
+      createdById: socket.id,
+      round: game.round,
+      hidden: true
+    };
+    game.addRule(fullRule);
+    broadcastGameState(game);
+    io.to(lobby.code).emit('rule_created_notification', {
+      round: game.round,
+      ruleCount: game.rules.length,
+      creatorId: socket.id
+    });
+    io.to(socket.id).emit('rule_created_detail', {
+      rule: fullRule,
+      round: game.round
     });
   });
 
@@ -358,8 +398,7 @@ io.on('connection', (socket) => {
     lobby.game.newRound();
     broadcastGameState(lobby.game);
     io.to(lobby.code).emit('new_round', {
-      round: lobby.game.round,
-      rules: lobby.game.rules
+      round: lobby.game.round
     });
   });
 

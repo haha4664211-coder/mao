@@ -104,6 +104,53 @@
   </div>
 </div>
 
+<div id="rule-creator-overlay" class="overlay hidden">
+  <div class="rule-creator-content">
+    <h3>CREATE HIDDEN RULE</h3>
+    <p class="rule-creator-subtitle">Build your rule using blocks. It will be hidden from other players.</p>
+
+    <div class="rule-creator-body">
+      <div class="rule-creator-section">
+        <label class="rule-creator-label">Rule Name</label>
+        <input type="text" id="rc-rule-name" class="rc-input" placeholder="e.g. No Clubs, Speak Please..." maxlength="40">
+      </div>
+
+      <div class="rule-creator-section">
+        <div class="rule-block-header rc-trigger-header">TRIGGER</div>
+        <div class="rule-block rc-trigger-block" id="rc-trigger-block">
+          <div class="rc-block-row">
+            <span class="rc-block-prefix">When</span>
+            <select id="rc-trigger-type" class="rc-select rc-trigger-select"></select>
+          </div>
+          <div class="rc-params" id="rc-trigger-params"></div>
+        </div>
+      </div>
+
+      <div class="rule-creator-section">
+        <div class="rule-block-header rc-condition-header">CONDITIONS <span class="rc-optional">(optional)</span></div>
+        <div id="rc-conditions-list"></div>
+        <button id="rc-add-condition" class="rc-add-btn">+ Add Condition</button>
+      </div>
+
+      <div class="rule-creator-section">
+        <div class="rule-block-header rc-action-header">ACTIONS</div>
+        <div id="rc-actions-list"></div>
+        <button id="rc-add-action" class="rc-add-btn">+ Add Action</button>
+      </div>
+
+      <div class="rule-creator-section">
+        <div class="rc-preview-label">Preview</div>
+        <div id="rc-preview" class="rc-preview">Select a trigger and at least one action to see preview.</div>
+      </div>
+    </div>
+
+    <div class="overlay-actions rule-creator-actions">
+      <button id="rc-btn-create" class="btn btn-primary">CREATE RULE</button>
+      <button id="rc-btn-skip" class="btn btn-danger">SKIP</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script src="/socket.io/socket.io.js"></script>

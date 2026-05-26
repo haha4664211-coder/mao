@@ -266,6 +266,518 @@ socket.on('new_round', function(data) {
   showToast('Round ' + data.round + ' started!', 'success');
 });
 
+socket.on('rule_created_notification', function(data) {
+  closePunishmentOverlay();
+  closeRuleCreator();
+  if (data.creatorId !== myId) {
+    showToast('A new hidden rule was added!', 'success');
+  }
+});
+
+socket.on('rule_created_detail', function(data) {
+  closePunishmentOverlay();
+  closeRuleCreator();
+  showBlockRuleApproved(data.rule, data.round);
+});
+
+// ========== RULE BLOCK CREATOR ==========
+
+var RC_TRIGGER_DEFS = [
+  { type: 'after_card_played', name: 'After card played', desc: 'a card is played', params: [] },
+  { type: 'before_turn', name: 'Before turn', desc: 'a turn begins', params: [] },
+  { type: 'after_drawing', name: 'After drawing', desc: 'a card is drawn', params: [] },
+  { type: 'after_punishment', name: 'After punishment', desc: 'a player is punished', params: [] },
+  { type: 'after_specific_rank', name: 'After specific rank', desc: 'a {rank} is played', params: [
+    { name: 'rank', label: 'Rank', type: 'select', options: ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'joker'] }
+  ]},
+  { type: 'after_specific_suit', name: 'After specific suit', desc: 'a {suit} is played', params: [
+    { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
+  ]},
+  { type: 'after_red_black', name: 'After red/black card', desc: 'a {color} card is played', params: [
+    { name: 'color', label: 'Color', type: 'select', options: ['red', 'black'] }
+  ]},
+  { type: 'after_card_combo', name: 'After card combo', desc: 'a {combo} combo is formed', params: [
+    { name: 'combo', label: 'Combo type', type: 'select', options: ['pair', 'run', 'flush', 'same suit'] }
+  ]},
+  { type: 'after_speaking', name: 'After speaking', desc: 'someone speaks', params: [] },
+  { type: 'after_saying_word', name: 'After saying word', desc: 'someone says "{word}"', params: [
+    { name: 'word', label: 'Word or phrase', type: 'string' }
+  ]},
+  { type: 'random_chance', name: 'Random chance', desc: 'random {chance}% chance per turn', params: [
+    { name: 'chance', label: 'Chance (%)', type: 'number', min: 1, max: 100 }
+  ]},
+];
+
+var RC_CONDITION_DEFS = [
+  { type: 'specific_suit', name: 'Specific suit', desc: 'card suit is {suit}', params: [
+    { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
+  ]},
+  { type: 'specific_rank', name: 'Specific rank', desc: 'card rank is {rank}', params: [
+    { name: 'rank', label: 'Rank', type: 'select', options: ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'joker'] }
+  ]},
+  { type: 'red_black', name: 'Red/black', desc: 'card color is {color}', params: [
+    { name: 'color', label: 'Color', type: 'select', options: ['red', 'black'] }
+  ]},
+  { type: 'even_odd', name: 'Even/odd', desc: 'card rank is {parity}', params: [
+    { name: 'parity', label: 'Parity', type: 'select', options: ['even', 'odd'] }
+  ]},
+  { type: 'consecutive_cards', name: 'Consecutive cards', desc: 'at least {count} cards in a row', params: [
+    { name: 'count', label: 'Count', type: 'number', min: 2, max: 10 }
+  ]},
+  { type: 'repeated_actions', name: 'Repeated actions', desc: 'same action repeated {count}x', params: [
+    { name: 'count', label: 'Count', type: 'number', min: 2, max: 10 }
+  ]},
+  { type: 'player_count', name: 'Player count', desc: 'there are {operator} {count} players', params: [
+    { name: 'operator', label: 'Comparison', type: 'select', options: ['exactly', 'at least', 'at most'] },
+    { name: 'count', label: 'Count', type: 'number', min: 2, max: 8 }
+  ]},
+  { type: 'current_direction', name: 'Current direction', desc: 'direction is {direction}', params: [
+    { name: 'direction', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'] }
+  ]},
+  { type: 'card_amount_in_hand', name: 'Cards in hand', desc: 'player has {operator} {count} cards', params: [
+    { name: 'operator', label: 'Comparison', type: 'select', options: ['exactly', 'at least', 'at most', 'less than', 'more than'] },
+    { name: 'count', label: 'Count', type: 'number', min: 0, max: 52 }
+  ]},
+];
+
+var RC_ACTION_DEFS = [
+  { type: 'force_draw_cards', name: 'Force draw cards', desc: 'force draw {count} cards', params: [
+    { name: 'count', label: 'Cards to draw', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'skip_turn', name: 'Skip turn', desc: 'skip next turn', params: [] },
+  { type: 'reverse_direction', name: 'Reverse direction', desc: 'reverse turn order', params: [] },
+  { type: 'must_say_phrase', name: 'Must say phrase', desc: 'must say "{phrase}"', params: [
+    { name: 'phrase', label: 'Required phrase', type: 'string' }
+  ]},
+  { type: 'cannot_say_phrase', name: 'Cannot say phrase', desc: 'cannot say "{phrase}"', params: [
+    { name: 'phrase', label: 'Forbidden phrase', type: 'string' }
+  ]},
+  { type: 'punish_player', name: 'Punish player', desc: 'punish (+{count} cards)', params: [
+    { name: 'count', label: 'Cards to give', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'punish_everyone', name: 'Punish everyone', desc: 'punish everyone (+{count} cards)', params: [
+    { name: 'count', label: 'Cards to give', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'reveal_card', name: 'Reveal card', desc: 'reveal a card from hand', params: [] },
+  { type: 'mute_player', name: 'Mute player', desc: 'mute for {turns} turn(s)', params: [
+    { name: 'turns', label: 'Number of turns', type: 'number', min: 1, max: 10 }
+  ]},
+  { type: 'change_active_suit', name: 'Change active suit', desc: 'change suit to {suit}', params: [
+    { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
+  ]},
+];
+
+var rcOverlay = document.getElementById('rule-creator-overlay');
+var rcTriggerType = document.getElementById('rc-trigger-type');
+var rcTriggerParams = document.getElementById('rc-trigger-params');
+var rcRuleName = document.getElementById('rc-rule-name');
+var rcConditionsList = document.getElementById('rc-conditions-list');
+var rcActionsList = document.getElementById('rc-actions-list');
+var rcPreview = document.getElementById('rc-preview');
+var rcAddCondition = document.getElementById('rc-add-condition');
+var rcAddAction = document.getElementById('rc-add-action');
+var rcBtnCreate = document.getElementById('rc-btn-create');
+var rcBtnSkip = document.getElementById('rc-btn-skip');
+
+var rcState = null;
+
+function getDef(defs, type) {
+  for (var i = 0; i < defs.length; i++) {
+    if (defs[i].type === type) return defs[i];
+  }
+  return null;
+}
+
+function fillDesc(def, params) {
+  var desc = def.desc;
+  if (!params) return desc;
+  for (var key in params) {
+    var val = params[key];
+    if (val !== undefined && val !== null) {
+      desc = desc.replace('{' + key + '}', val);
+    }
+  }
+  return desc;
+}
+
+function getDefaultParams(def) {
+  var p = {};
+  if (!def || !def.params) return p;
+  for (var i = 0; i < def.params.length; i++) {
+    var paramDef = def.params[i];
+    if (paramDef.default !== undefined) {
+      p[paramDef.name] = paramDef.default;
+    } else if (paramDef.type === 'select' && paramDef.options && paramDef.options.length > 0) {
+      p[paramDef.name] = paramDef.options[0];
+    } else if (paramDef.type === 'number') {
+      p[paramDef.name] = paramDef.min || 1;
+    } else if (paramDef.type === 'string') {
+      p[paramDef.name] = '';
+    }
+  }
+  return p;
+}
+
+function renderParams(container, def, values, onChange) {
+  container.innerHTML = '';
+  if (!def || !def.params || def.params.length === 0) return;
+  for (var i = 0; i < def.params.length; i++) {
+    var p = def.params[i];
+    var val = values[p.name] !== undefined ? values[p.name] : '';
+    var wrapper = document.createElement('div');
+    wrapper.className = 'rc-param-wrapper';
+    var label = document.createElement('span');
+    label.className = 'rc-param-label';
+    label.textContent = p.label;
+    wrapper.appendChild(label);
+    if (p.type === 'select') {
+      var sel = document.createElement('select');
+      sel.className = 'rc-select rc-param-select';
+      for (var j = 0; j < p.options.length; j++) {
+        var opt = document.createElement('option');
+        opt.value = p.options[j];
+        opt.textContent = p.options[j].charAt(0).toUpperCase() + p.options[j].slice(1);
+        if (p.options[j] === val) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener('change', function(paramName, s) {
+        return function() { values[paramName] = s.value; if (onChange) onChange(); };
+      }(p.name, sel));
+      wrapper.appendChild(sel);
+    } else if (p.type === 'number') {
+      var inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'rc-input rc-param-input';
+      inp.min = p.min || 1;
+      inp.max = p.max || 10;
+      inp.value = val || p.min || 1;
+      inp.addEventListener('input', function(paramName, ipt) {
+        return function() { values[paramName] = parseInt(ipt.value) || (p.min || 1); if (onChange) onChange(); };
+      }(p.name, inp));
+      wrapper.appendChild(inp);
+    } else if (p.type === 'string') {
+      var inp2 = document.createElement('input');
+      inp2.type = 'text';
+      inp2.className = 'rc-input rc-param-input';
+      inp2.placeholder = p.label;
+      inp2.value = val || '';
+      inp2.addEventListener('input', function(paramName, ipt) {
+        return function() { values[paramName] = ipt.value; if (onChange) onChange(); };
+      }(p.name, inp2));
+      wrapper.appendChild(inp2);
+    }
+    container.appendChild(wrapper);
+  }
+}
+
+function updateRulePreview() {
+  if (!rcState) return;
+  var parts = [];
+  var triggerDef = getDef(RC_TRIGGER_DEFS, rcState.trigger.type);
+  if (!triggerDef) { rcPreview.textContent = 'Select a trigger and at least one action.'; return; }
+  var triggerText = 'When ' + fillDesc(triggerDef, rcState.trigger.params);
+  parts.push(triggerText);
+  if (rcState.conditions.length > 0) {
+    var condTexts = [];
+    for (var i = 0; i < rcState.conditions.length; i++) {
+      var c = rcState.conditions[i];
+      var cDef = getDef(RC_CONDITION_DEFS, c.type);
+      if (cDef) condTexts.push(fillDesc(cDef, c.params));
+    }
+    if (condTexts.length > 0) {
+      parts.push('if ' + condTexts.join(' and '));
+    }
+  }
+  if (rcState.actions.length > 0) {
+    var actTexts = [];
+    for (var j = 0; j < rcState.actions.length; j++) {
+      var a = rcState.actions[j];
+      var aDef = getDef(RC_ACTION_DEFS, a.type);
+      if (aDef) actTexts.push(fillDesc(aDef, a.params));
+    }
+    if (actTexts.length > 0) {
+      parts.push('then ' + actTexts.join(' and '));
+    }
+  }
+  rcPreview.textContent = parts.join(', ');
+}
+
+function addConditionBlock(type) {
+  var def = getDef(RC_CONDITION_DEFS, type);
+  if (!def) return;
+  var cond = { type: type, params: getDefaultParams(def) };
+  var idx = rcState.conditions.length;
+  rcState.conditions.push(cond);
+  renderConditionBlock(idx);
+  updateRulePreview();
+}
+
+function renderConditionBlock(idx) {
+  var cond = rcState.conditions[idx];
+  var def = getDef(RC_CONDITION_DEFS, cond.type);
+  if (!def) return;
+  var block = document.createElement('div');
+  block.className = 'rule-block rc-condition-block';
+  block.dataset.index = idx;
+  var row = document.createElement('div');
+  row.className = 'rc-block-row';
+  var prefix = document.createElement('span');
+  prefix.className = 'rc-block-prefix';
+  prefix.textContent = 'If';
+  row.appendChild(prefix);
+  var sel = document.createElement('select');
+  sel.className = 'rc-select rc-condition-select';
+  for (var i = 0; i < RC_CONDITION_DEFS.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = RC_CONDITION_DEFS[i].type;
+    opt.textContent = RC_CONDITION_DEFS[i].name;
+    if (RC_CONDITION_DEFS[i].type === cond.type) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', function(index, select) {
+    return function() {
+      var newDef = getDef(RC_CONDITION_DEFS, select.value);
+      if (newDef) {
+        rcState.conditions[index] = { type: select.value, params: getDefaultParams(newDef) };
+        rebuildConditions();
+        updateRulePreview();
+      }
+    };
+  }(idx, sel));
+  row.appendChild(sel);
+  var removeBtn = document.createElement('button');
+  removeBtn.className = 'rc-remove-btn';
+  removeBtn.textContent = '✕';
+  removeBtn.addEventListener('click', function(index) {
+    return function() {
+      rcState.conditions.splice(index, 1);
+      rebuildConditions();
+      updateRulePreview();
+    };
+  }(idx));
+  row.appendChild(removeBtn);
+  block.appendChild(row);
+  var paramsDiv = document.createElement('div');
+  paramsDiv.className = 'rc-params';
+  block.appendChild(paramsDiv);
+  renderParams(paramsDiv, def, cond.params, updateRulePreview);
+  var existing = rcConditionsList.children[idx];
+  if (existing) {
+    rcConditionsList.replaceChild(block, existing);
+  } else {
+    rcConditionsList.appendChild(block);
+  }
+}
+
+function rebuildConditions() {
+  rcConditionsList.innerHTML = '';
+  for (var i = 0; i < rcState.conditions.length; i++) {
+    renderConditionBlock(i);
+  }
+}
+
+function addActionBlock(type) {
+  var def = getDef(RC_ACTION_DEFS, type);
+  if (!def) return;
+  var act = { type: type, params: getDefaultParams(def) };
+  rcState.actions.push(act);
+  rebuildActions();
+  updateRulePreview();
+}
+
+function rebuildActions() {
+  rcActionsList.innerHTML = '';
+  for (var i = 0; i < rcState.actions.length; i++) {
+    var act = rcState.actions[i];
+    var def = getDef(RC_ACTION_DEFS, act.type);
+    if (!def) continue;
+    var block = document.createElement('div');
+    block.className = 'rule-block rc-action-block';
+    block.dataset.index = i;
+    var row = document.createElement('div');
+    row.className = 'rc-block-row';
+    var prefix = document.createElement('span');
+    prefix.className = 'rc-block-prefix';
+    prefix.textContent = 'Then';
+    row.appendChild(prefix);
+    var sel = document.createElement('select');
+    sel.className = 'rc-select rc-action-select';
+    for (var j = 0; j < RC_ACTION_DEFS.length; j++) {
+      var opt = document.createElement('option');
+      opt.value = RC_ACTION_DEFS[j].type;
+      opt.textContent = RC_ACTION_DEFS[j].name;
+      if (RC_ACTION_DEFS[j].type === act.type) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', function(index, select) {
+      return function() {
+        var newDef = getDef(RC_ACTION_DEFS, select.value);
+        if (newDef) {
+          rcState.actions[index] = { type: select.value, params: getDefaultParams(newDef) };
+          rebuildActions();
+          updateRulePreview();
+        }
+      };
+    }(i, sel));
+    row.appendChild(sel);
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'rc-remove-btn';
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', function(index) {
+      return function() {
+        rcState.actions.splice(index, 1);
+        rebuildActions();
+        updateRulePreview();
+      };
+    }(i));
+    row.appendChild(removeBtn);
+    block.appendChild(row);
+    var paramsDiv = document.createElement('div');
+    paramsDiv.className = 'rc-params';
+    block.appendChild(paramsDiv);
+    renderParams(paramsDiv, def, act.params, updateRulePreview);
+    rcActionsList.appendChild(block);
+  }
+}
+
+function initRuleCreator() {
+  rcTriggerType.innerHTML = '';
+  for (var i = 0; i < RC_TRIGGER_DEFS.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = RC_TRIGGER_DEFS[i].type;
+    opt.textContent = RC_TRIGGER_DEFS[i].name;
+    rcTriggerType.appendChild(opt);
+  }
+  rcTriggerType.addEventListener('change', function() {
+    var type = rcTriggerType.value;
+    var def = getDef(RC_TRIGGER_DEFS, type);
+    if (def) {
+      rcState.trigger = { type: type, params: getDefaultParams(def) };
+      renderParams(rcTriggerParams, def, rcState.trigger.params, updateRulePreview);
+      updateRulePreview();
+    }
+  });
+  rcAddCondition.addEventListener('click', function() {
+    if (rcState.conditions.length >= 5) {
+      showToast('Maximum 5 conditions', 'error');
+      return;
+    }
+    addConditionBlock('specific_suit');
+  });
+  rcAddAction.addEventListener('click', function() {
+    if (rcState.actions.length >= 5) {
+      showToast('Maximum 5 actions', 'error');
+      return;
+    }
+    addActionBlock('force_draw_cards');
+  });
+  rcRuleName.addEventListener('input', updateRulePreview);
+  rcBtnCreate.addEventListener('click', function() {
+    var name = rcRuleName.value.trim();
+    if (!name) { showToast('Give your rule a name', 'error'); return; }
+    if (rcState.actions.length === 0) { showToast('Add at least one action', 'error'); return; }
+    var rule = {
+      name: name,
+      trigger: rcState.trigger,
+      conditions: rcState.conditions,
+      actions: rcState.actions
+    };
+    socket.emit('submit_block_rule', { rule: rule });
+    rcBtnCreate.disabled = true;
+    rcBtnCreate.textContent = 'CREATING...';
+  });
+  rcBtnSkip.addEventListener('click', function() {
+    socket.emit('confirm_rule', {
+      rule: {
+        description: 'No rule added',
+        summary: 'Skipped',
+        interpretation: 'Winner chose not to add a rule this round.',
+        createdBy: myNickname,
+        round: gameState ? gameState.round : 0,
+        revealed: true
+      }
+    });
+    closeRuleCreator();
+  });
+}
+
+function showRuleCreator(data) {
+  if (!rcState) {
+    rcState = {
+      trigger: { type: 'after_card_played', params: {} },
+      conditions: [],
+      actions: [{ type: 'force_draw_cards', params: {} }]
+    };
+  } else {
+    rcState.trigger = { type: 'after_card_played', params: {} };
+    rcState.conditions = [];
+    rcState.actions = [{ type: 'force_draw_cards', params: {} }];
+  }
+  rcRuleName.value = '';
+  rcTriggerType.value = 'after_card_played';
+  var triggerDef = getDef(RC_TRIGGER_DEFS, 'after_card_played');
+  if (triggerDef) {
+    rcState.trigger.params = getDefaultParams(triggerDef);
+    renderParams(rcTriggerParams, triggerDef, rcState.trigger.params, updateRulePreview);
+  }
+  rcConditionsList.innerHTML = '';
+  rcActionsList.innerHTML = '';
+  rebuildActions();
+  rcBtnCreate.disabled = false;
+  rcBtnCreate.textContent = 'CREATE RULE';
+  updateRulePreview();
+  rcOverlay.classList.remove('hidden');
+}
+
+function closeRuleCreator() {
+  rcOverlay.classList.add('hidden');
+}
+
+function showBlockRuleApproved(rule, round) {
+  var preview = '';
+  var triggerDef = getDef(RC_TRIGGER_DEFS, rule.trigger.type);
+  if (triggerDef) {
+    preview += 'When ' + fillDesc(triggerDef, rule.trigger.params);
+  }
+  if (rule.conditions && rule.conditions.length > 0) {
+    var condTexts = [];
+    for (var i = 0; i < rule.conditions.length; i++) {
+      var cDef = getDef(RC_CONDITION_DEFS, rule.conditions[i].type);
+      if (cDef) condTexts.push(fillDesc(cDef, rule.conditions[i].params));
+    }
+    if (condTexts.length > 0) preview += ', if ' + condTexts.join(' and ');
+  }
+  var actTexts = [];
+  for (var j = 0; j < rule.actions.length; j++) {
+    var aDef = getDef(RC_ACTION_DEFS, rule.actions[j].type);
+    if (aDef) actTexts.push(fillDesc(aDef, rule.actions[j].params));
+  }
+  if (actTexts.length > 0) preview += ', then ' + actTexts.join(' and ');
+
+  punishmentTitle.textContent = 'ROUND ' + round + ' - NEW RULE!';
+  punishmentBody.innerHTML =
+    '<div class="punish-info">' +
+    '<p style="color:var(--accent-green);font-size:18px;font-weight:700">RULE CREATED!</p>' +
+    '<p class="punish-reason" style="font-weight:600;font-size:16px">"' + escapeHtml(rule.name) + '"</p>' +
+    '<p style="color:var(--accent-gold);font-size:13px;margin-top:4px">' + escapeHtml(preview) + '</p>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Other players cannot see this rule.</p>' +
+    '</div>';
+  punishmentActions.innerHTML =
+    '<button class="btn btn-primary" id="btn-next-round">NEXT ROUND</button>';
+  punishmentOverlay.classList.remove('hidden');
+  document.getElementById('btn-next-round').addEventListener('click', function() {
+    closePunishmentOverlay();
+    socket.emit('start_new_round');
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+initRuleCreator();
+
 function renderGame() {
   if (!gameState) return;
   deckCountEl.textContent = gameState.deckSize;
@@ -595,33 +1107,17 @@ function closePunishmentOverlay() {
 
 function showRuleForm(data) {
   var isWinner = data.winnerId === myId;
-  punishmentTitle.textContent = 'ROUND ' + data.round + ' - ' + data.winnerNickname + ' WINS!';
 
   if (isWinner) {
-    punishmentBody.innerHTML =
-      '<div class="punish-info">' +
-      '<p>Congratulations! You won round ' + data.round + '.</p>' +
-      '<p>Create a new hidden rule that everyone must follow.</p>' +
-      '<textarea id="rule-description" class="punish-input" style="height:80px;resize:none" placeholder="Describe your rule... e.g. Only play spades"></textarea>' +
-      '<p style="font-size:12px;color:var(--text-secondary)">The AI will check if your rule makes sense.</p>' +
-      '</div>';
-    punishmentActions.innerHTML =
-      '<button class="btn btn-primary" id="btn-submit-rule">CREATE RULE</button>';
-    punishmentOverlay.classList.remove('hidden');
-
-    document.getElementById('btn-submit-rule').addEventListener('click', function() {
-      var desc = document.getElementById('rule-description').value.trim();
-      if (!desc) { showToast('Enter a rule description', 'error'); return; }
-      socket.emit('submit_rule', { description: desc });
-      document.getElementById('btn-submit-rule').disabled = true;
-      document.getElementById('btn-submit-rule').textContent = 'CHECKING...';
-    });
+    showRuleCreator(data);
   } else {
+    var ruleCount = gameState && gameState.rules ? gameState.rules.length : '?';
+    punishmentTitle.textContent = 'ROUND ' + data.round + ' - ' + data.winnerNickname + ' WINS!';
     punishmentBody.innerHTML =
       '<div class="punish-info">' +
       '<p><span class="punish-highlight">' + data.winnerNickname + '</span> won round ' + data.round + '!</p>' +
       '<p>They are creating a new hidden rule...</p>' +
-      '<p style="font-size:12px;color:var(--text-secondary)">Current rules: ' + data.rules.length + '</p>' +
+      '<p style="font-size:12px;color:var(--text-secondary)">Total rules: ' + ruleCount + '</p>' +
       '</div>';
     punishmentActions.innerHTML = '<p style="color:var(--text-secondary);font-size:13px">Waiting for winner to create a rule</p>';
     punishmentOverlay.classList.remove('hidden');
@@ -629,12 +1125,13 @@ function showRuleForm(data) {
 }
 
 function showRuleApproved(data) {
+  var ruleCount = gameState && gameState.rules ? gameState.rules.length : '?';
   punishmentBody.innerHTML =
     '<div class="punish-info">' +
     '<p style="color:var(--accent-green);font-size:18px;font-weight:700">NEW RULE IN PLAY!</p>' +
     '<p class="punish-reason">"' + data.rule.description + '"</p>' +
     '<p><span class="punish-highlight">' + data.rule.summary + '</span></p>' +
-    '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Total rules: ' + data.rules.length + '</p>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Total rules: ' + ruleCount + '</p>' +
     '</div>';
   punishmentActions.innerHTML =
     '<button class="btn btn-primary" id="btn-next-round">NEXT ROUND</button>';
