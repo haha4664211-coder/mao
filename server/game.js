@@ -417,6 +417,13 @@ class Game {
     const card = victim.hand.splice(cardIndex, 1)[0];
     punisher.hand.push(card);
 
+    // Set up reverse: original punisher can now punish back the original victim
+    this.lastSimplePunish[punishData.punisherId] = {
+      punisherId: victimId,
+      card: card,
+      timestamp: Date.now()
+    };
+
     delete this.lastSimplePunish[victimId];
 
     return { success: true, card, victimId, punisherId: punishData.punisherId };

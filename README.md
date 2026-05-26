@@ -63,13 +63,16 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - Misplay chance: lower-difficulty bots occasionally play illegal cards
 - Social: bots vote on punishments, can accuse/punish other players for rule violations
 - Bot rule creation: winning bots create random hidden rules
+- **Single punishment per offense** — only one bot punishes per violation (first detector), not all 4
+- **Base matching enforcement** — bots enforce suit/rank matching as a built-in rule, no hidden rule required
 
 ### Gameplay
 - Standard 54-card deck (52 + 2 jokers), 1 or 2 decks selectable
 - Auto-reshuffle when deck runs out (discard pile shuffled back, top card stays)
 - 5 cards dealt per player, 1 starts the discard pile
 - Turn-based: play a card matching the top card's suit or rank, draw, or end turn
-- Bots enforce suit/rank matching as a base rule — they will punish players who play off-suit/rank even if no hidden rule covers it (gated by bot difficulty and detect chance)
+- Bots enforce suit/rank matching as a built-in rule — they will punish players who play off-suit/rank even if no hidden rule covers it (gated by bot difficulty and detect chance)
+- **Punish back** — if you are punished (given a card), you can "punish back" to return it. Chain is infinite: punish → punish back → punish back → ... indefinitely (each swap triggers a new "PUNISH BACK!" button on the other side)
 - Drawing auto-ends the turn and passes to next player
 - Punishment system: accuse a player → group vote → majority decides penalty
 - Per-player cooldown (500ms) prevents rapid double-plays

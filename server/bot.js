@@ -518,6 +518,7 @@ class BotController {
   }
 
   onCardPlayed(playerId, card) {
+    this._punishingPlay = false;
     for (var i = 0; i < this.game.players.length; i++) {
       var p = this.game.players[i];
       if (!p.isBot) continue;
@@ -525,6 +526,7 @@ class BotController {
     }
 
     // Built-in base rule: card must match the previous top card's suit or rank
+    // Only one bot punishes per violation (first detector)
     var pile = this.game.discardPile;
     if (pile.length >= 2) {
       var prevCard = pile[pile.length - 2];
@@ -532,27 +534,32 @@ class BotController {
         card.suit === prevCard.suit || card.rank === prevCard.rank ||
         card.rank === 'joker' || prevCard.rank === 'joker'
       );
-      if (prevCard && !matchesSuitOrRank) {
+      if (prevCard && !matchesSuitOrRank && !this._punishingPlay) {
+        this._punishingPlay = true;
+        var punisherId = null;
         for (var i = 0; i < this.game.players.length; i++) {
           var p = this.game.players[i];
           if (!p.isBot || p.id === playerId) continue;
           var mem = this.botMemory.get(p.id);
           if (!mem) continue;
-          var stats = mem.stats;
-          if (Math.random() > stats.detectChance * 0.7) continue;
-          if (this.game.state !== 'playing') return;
-
+          if (Math.random() < mem.stats.detectChance * 0.7) {
+            punisherId = p.id;
+            break;
+          }
+        }
+        if (punisherId) {
           var self = this;
-          (function(botId, targetId) {
-            setTimeout(function() {
-              if (self.game.state !== 'playing') return;
-              var result = self.game.simplePunish(botId, targetId);
-              if (result.success) {
-                self.io.to(self.lobbyCode).emit('player_punished', result);
-                self.broadcastGameState();
-              }
-            }, 500 + Math.random() * 1500);
-          })(p.id, playerId);
+          setTimeout(function() {
+            self._punishingPlay = false;
+            if (self.game.state !== 'playing') return;
+            var result = self.game.simplePunish(punisherId, playerId);
+            if (result.success) {
+              self.io.to(self.lobbyCode).emit('player_punished', result);
+              self.broadcastGameState();
+            }
+          }, 500 + Math.random() * 1500);
+        } else {
+          this._punishingPlay = false;
         }
       }
     }
@@ -603,18 +610,23 @@ class BotController {
       }
 
       if (playerId === botId) continue;
+      if (this._punishingPlay) break;
       if (Math.random() > stats.detectChance * 0.7) continue;
       if (this.game.state !== 'playing') return;
 
+      this._punishingPlay = true;
       var self = this;
-      setTimeout(function() {
-        if (self.game.state !== 'playing') return;
-        var result = self.game.simplePunish(botId, playerId);
-        if (result.success) {
-          self.io.to(self.lobbyCode).emit('player_punished', result);
-          self.broadcastGameState();
-        }
-      }, 500 + Math.random() * 1500);
+      (function(botId, targetId) {
+        setTimeout(function() {
+          self._punishingPlay = false;
+          if (self.game.state !== 'playing') return;
+          var result = self.game.simplePunish(botId, targetId);
+          if (result.success) {
+            self.io.to(self.lobbyCode).emit('player_punished', result);
+            self.broadcastGameState();
+          }
+        }, 500 + Math.random() * 1500);
+      })(botId, playerId);
     }
 
     this.forgetOldRules(mem, stats);

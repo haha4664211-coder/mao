@@ -283,6 +283,12 @@ io.on('connection', (socket) => {
     }
     const game = lobby.game;
     io.to(lobby.code).emit('punish_back_result', result);
+    // After a successful punish back, the original punisher now has the card
+    // and gets a punish back button to continue the chain
+    io.to(lobby.code).emit('player_punished', {
+      targetId: result.punisherId,
+      punisherId: result.victimId
+    });
     broadcastGameState(game);
   });
 
