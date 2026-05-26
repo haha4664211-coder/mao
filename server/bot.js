@@ -562,10 +562,11 @@ class BotController {
         }
         if (punisherId) {
           var self = this;
+          var capturedTargetId = playerId;
           setTimeout(function() {
             self._punishingPlay = false;
             if (self.game.state !== 'playing') return;
-            var result = self.game.simplePunish(punisherId, playerId);
+            var result = self.game.badCardPunish(punisherId, capturedTargetId);
             if (result.success) {
               self.io.to(self.lobbyCode).emit('player_punished', result);
               self.broadcastGameState();

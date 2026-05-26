@@ -26,6 +26,7 @@ const drawPile = document.getElementById('draw-pile');
 const deckCountEl = document.getElementById('deck-count');
 const btnDraw = document.getElementById('btn-draw');
 const btnEndTurn = document.getElementById('btn-end-turn');
+const btnBadCard = document.getElementById('btn-bad-card');
 const btnFullscreen = document.getElementById('btn-fullscreen');
 const btnLeaveGame = document.getElementById('btn-leave-game');
 const btnKnock = document.getElementById('btn-knock');
@@ -94,7 +95,12 @@ socket.on('player_punished', function(data) {
     var punisher = gameState.players.find(function(p) { return p.id === data.punisherId; });
     var vName = victim ? victim.nickname : 'Player';
     var pName = punisher ? punisher.nickname : 'Player';
-    showToast(pName + ' punished ' + vName + '! They drew a card', 'error');
+
+    if (data.type === 'bad_card') {
+      showToast(pName + ' caught ' + vName + '! Card returned + penalty!', 'error');
+    } else {
+      showToast(pName + ' punished ' + vName + '! They drew a card', 'error');
+    }
 
     if (data.targetId === myId) {
       showPunishBackButton(data.punisherId);
@@ -109,6 +115,13 @@ socket.on('punish_back_result', function(data) {
     var vName = victim ? victim.nickname : 'Player';
     var pName = punisher ? punisher.nickname : 'Player';
     showToast(vName + ' punished back ' + pName + '! Card returned!', 'success');
+    hidePunishBackButton();
+  }
+});
+
+socket.on('back_to_deck_result', function(data) {
+  if (gameState) {
+    showToast('Card sent back to the deck!', 'info');
     hidePunishBackButton();
   }
 });
@@ -853,12 +866,19 @@ function showPunishBackButton(punisherId) {
   bar.setAttribute('data-punisher', punisherId);
   bar.innerHTML =
     '<span>You were punished! Get revenge?</span>' +
-    '<button class="btn btn-danger btn-small" id="btn-punish-back">PUNISH BACK!</button>';
+    '<button class="btn btn-danger btn-small" id="btn-punish-back">PUNISH BACK!</button>' +
+    '<button class="btn btn-secondary btn-small" id="btn-back-to-deck">BACK TO DECK</button>';
   document.querySelector('.game-bottom-bar').appendChild(bar);
 
   document.getElementById('btn-punish-back').addEventListener('click', function() {
     socket.emit('punish_back');
     sound.play('punish');
+    hidePunishBackButton();
+  });
+
+  document.getElementById('btn-back-to-deck').addEventListener('click', function() {
+    socket.emit('back_to_deck');
+    sound.play('click');
     hidePunishBackButton();
   });
 }
@@ -957,6 +977,11 @@ btnDraw.addEventListener('click', function() {
   }
   socket.emit('draw_card');
   sound.play('click');
+});
+
+btnBadCard.addEventListener('click', function() {
+  socket.emit('bad_card_punish');
+  sound.play('punish');
 });
 
 btnEndTurn.addEventListener('click', function() {

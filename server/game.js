@@ -123,6 +123,7 @@ class Game {
     this.lastWinner = null;
     this.lastPlayedAt = {};
     this.lastSimplePunish = {};
+    this.lastPlayedById = null;
     this.initDeck();
     this.dealCards();
   }
@@ -181,6 +182,7 @@ class Game {
 
     const card = player.hand.splice(cardIndex, 1)[0];
     this.discardPile.push(card);
+    this.lastPlayedById = player.id;
 
     let winner = null;
     if (player.hand.length === 0) {
@@ -409,6 +411,66 @@ class Game {
     };
 
     return { success: true, card, targetId, punisherId: accuserId };
+  }
+
+  badCardPunish(accuserId, targetId) {
+    if (!targetId) targetId = this.lastPlayedById;
+    if (!targetId) return { success: false, error: 'No card has been played yet' };
+    if (accuserId === targetId) return { success: false, error: 'Cannot punish yourself' };
+    if (this.discardPile.length === 0) return { success: false, error: 'Discard pile is empty' };
+
+    const target = this.getPlayer(targetId);
+    const accuser = this.getPlayer(accuserId);
+    if (!target || !accuser) return { success: false, error: 'Player not found' };
+    if (this.deck.length === 0) return { success: false, error: 'Deck is empty' };
+
+    // Return the played card from discard pile to target's hand
+    const playedCard = this.discardPile.pop();
+    target.hand.push(playedCard);
+
+    // Draw a penalty card from deck
+    const penaltyCard = this.deck.pop();
+    target.hand.push(penaltyCard);
+
+    // Set up punish back chain on the penalty card
+    this.lastSimplePunish[targetId] = {
+      punisherId: accuserId,
+      card: penaltyCard,
+      timestamp: Date.now()
+    };
+
+    return {
+      success: true,
+      type: 'bad_card',
+      playedCard,
+      penaltyCard,
+      targetId,
+      punisherId: accuserId
+    };
+  }
+
+  backToDeck(playerId) {
+    const punishData = this.lastSimplePunish[playerId];
+    if (!punishData) return { success: false, error: 'No punishment to reverse' };
+
+    const player = this.getPlayer(playerId);
+    if (!player) return { success: false, error: 'Player not found' };
+
+    const cardIndex = player.hand.length - 1;
+    if (cardIndex < 0) {
+      delete this.lastSimplePunish[playerId];
+      return { success: false, error: 'Card no longer in hand' };
+    }
+
+    const card = player.hand.splice(cardIndex, 1)[0];
+
+    // Insert at random position in deck, not on top
+    const insertIndex = Math.floor(Math.random() * (this.deck.length + 1));
+    this.deck.splice(insertIndex, 0, card);
+
+    delete this.lastSimplePunish[playerId];
+
+    return { success: true, card, playerId };
   }
 
   punishBack(victimId) {
