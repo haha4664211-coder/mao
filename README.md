@@ -81,10 +81,9 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 ### Hidden Rule Creator
 Opens when you win a round. Block-based builder:
 - **Triggers when…** — dropdown for trigger type (currently "A card is played", space for future triggers)
-- **Suit / Rank selectors** — restrict trigger to a specific suit or rank
+- **Multiple trigger rows** — add multiple suit/rank combos via "+ Add trigger"; rows are OR'd (e.g. "black 7 OR black 8 OR red 9")
 - **What happens** — pick action (Skip, Reverse direction, Double turn, Change suit to…, Must say…, Knock on table)
 - **Who & When (⚙)** — advanced target/timing config for Skip and Reverse
-- **Extra conditions** — toggleable panel for additional conditions (card suit/rank, red/black)
 - **Rule summary** — live preview builds as you configure
 - Actions map to server action types for self-policing
 

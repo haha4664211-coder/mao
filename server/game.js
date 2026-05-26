@@ -267,6 +267,17 @@ class Game {
         if (!def) return { valid: false, error: `Invalid condition type: ${cond.type}` };
       }
     }
+    if (rule.orConditions) {
+      if (rule.orConditions.length > 10) return { valid: false, error: 'Too many trigger groups (max 10)' };
+      for (const group of rule.orConditions) {
+        if (!Array.isArray(group)) return { valid: false, error: 'Invalid trigger group' };
+        if (group.length > 5) return { valid: false, error: 'Too many conditions in a group (max 5)' };
+        for (const cond of group) {
+          const def = CONDITION_DEFS.find(c => c.type === cond.type);
+          if (!def) return { valid: false, error: `Invalid condition type: ${cond.type}` };
+        }
+      }
+    }
 
     return { valid: true };
   }

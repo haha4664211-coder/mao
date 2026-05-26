@@ -302,30 +302,43 @@ class BotController {
     }
   }
 
+  _conditionsMatch(conditions, card) {
+    if (!conditions || conditions.length === 0) return true;
+    for (var j = 0; j < conditions.length; j++) {
+      var c = conditions[j];
+      if (c.type === 'specific_suit' && c.params.suit !== card.suit) return false;
+      if (c.type === 'specific_rank' && c.params.rank !== card.rank) return false;
+      if (c.type === 'red_black') {
+        var isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+        if (c.params.color === 'black' && !(card.suit === 'clubs' || card.suit === 'spades')) return false;
+        if (c.params.color === 'red' && !isRed) return false;
+      }
+    }
+    return true;
+  }
+
+  _cardMatchesRule(rule, card) {
+    if (rule.orConditions && rule.orConditions.length > 0) {
+      for (var i = 0; i < rule.orConditions.length; i++) {
+        if (this._conditionsMatch(rule.orConditions[i], card)) return true;
+      }
+      return false;
+    }
+    return this._conditionsMatch(rule.conditions, card);
+  }
+
   observePlay(playerId, card) {
     var rules = this.game.rules;
     for (var i = 0; i < rules.length; i++) {
       var r = rules[i];
       if (r.type !== 'block') continue;
-      if (!r.conditions || r.conditions.length === 0) continue;
-      var matches = true;
-      for (var j = 0; j < r.conditions.length; j++) {
-        var c = r.conditions[j];
-        if (c.type === 'specific_suit' && c.params.suit !== card.suit) matches = false;
-        if (c.type === 'specific_rank' && c.params.rank !== card.rank) matches = false;
-        if (c.type === 'red_black') {
-          var isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-          var blackSuits = c.params.color === 'black';
-          if (blackSuits && !(card.suit === 'clubs' || card.suit === 'spades')) matches = false;
-          if (!blackSuits && !isRed) matches = false;
-        }
-      }
-      if (matches) {
-        for (var k = 0; k < this.game.players.length; k++) {
-          var p = this.game.players[k];
-          if (!p.isBot) continue;
-          this.learnRule(p.id, r, card);
-        }
+      if (!r.conditions && !r.orConditions) continue;
+      if (!r.orConditions && (!r.conditions || r.conditions.length === 0)) continue;
+      if (!this._cardMatchesRule(r, card)) continue;
+      for (var k = 0; k < this.game.players.length; k++) {
+        var p = this.game.players[k];
+        if (!p.isBot) continue;
+        this.learnRule(p.id, r, card);
       }
     }
   }
@@ -573,20 +586,9 @@ class BotController {
     for (var i = 0; i < this.game.rules.length; i++) {
       var r = this.game.rules[i];
       if (r.type !== 'block') continue;
-      if (!r.conditions || r.conditions.length === 0) continue;
-
-      var matches = true;
-      for (var j = 0; j < r.conditions.length; j++) {
-        var c = r.conditions[j];
-        if (c.type === 'specific_suit' && c.params.suit !== card.suit) matches = false;
-        if (c.type === 'specific_rank' && c.params.rank !== card.rank) matches = false;
-        if (c.type === 'red_black') {
-          var isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-          if (c.params.color === 'black' && !(card.suit === 'clubs' || card.suit === 'spades')) matches = false;
-          if (c.params.color === 'red' && !isRed) matches = false;
-        }
-      }
-      if (!matches) continue;
+      if (!r.conditions && !r.orConditions) continue;
+      if (!r.orConditions && (!r.conditions || r.conditions.length === 0)) continue;
+      if (!this._cardMatchesRule(r, card)) continue;
 
       if (Math.random() > stats.detectChance) continue;
 
