@@ -399,10 +399,16 @@ var rcWhenSuit = document.getElementById('rc-when-suit');
 var rcWhenRank = document.getElementById('rc-when-rank');
 var rcWhenLabel = document.getElementById('rc-when-label');
 var rcActionType = document.getElementById('rc-action-type');
+var rcActionGear = document.getElementById('rc-action-gear');
 var rcActionConfig = document.getElementById('rc-action-config');
 var rcPreview = document.getElementById('rc-preview');
 var rcBtnCreate = document.getElementById('rc-btn-create');
 var rcBtnSkip = document.getElementById('rc-btn-skip');
+var rcAdvToggle = document.getElementById('rc-adv-toggle');
+var rcAdvPanel = document.getElementById('rc-adv-panel');
+var rcAdvTriggerType = document.getElementById('rc-adv-trigger-type');
+var rcAdvConditionsList = document.getElementById('rc-adv-conditions-list');
+var rcAdvAddCondition = document.getElementById('rc-adv-add-condition');
 
 var rcState = null;
 
@@ -423,56 +429,6 @@ function renderActionConfig() {
   rcActionConfig.innerHTML = '';
   var cfg = SIMPLE_ACTIONS[rcState.actionKey];
   if (!cfg) return;
-  var parts = [];
-
-  if (cfg.targets && cfg.targets.length > 0) {
-    var targetRow = document.createElement('div');
-    targetRow.className = 'rc-config-row';
-    var tLabel = document.createElement('span');
-    tLabel.className = 'rc-config-label';
-    tLabel.textContent = 'Who';
-    targetRow.appendChild(tLabel);
-    var tSel = document.createElement('select');
-    tSel.className = 'rc-select rc-config-select';
-    for (var i = 0; i < cfg.targets.length; i++) {
-      var opt = document.createElement('option');
-      opt.value = cfg.targets[i];
-      opt.textContent = TARGET_LABELS[cfg.targets[i]] || cfg.targets[i];
-      if (cfg.targets[i] === rcState.target) opt.selected = true;
-      tSel.appendChild(opt);
-    }
-    tSel.addEventListener('change', function() {
-      rcState.target = tSel.value;
-      updateRulePreview();
-    });
-    targetRow.appendChild(tSel);
-    rcActionConfig.appendChild(targetRow);
-  }
-
-  if (cfg.timing) {
-    var timeRow = document.createElement('div');
-    timeRow.className = 'rc-config-row';
-    var tiLabel = document.createElement('span');
-    tiLabel.className = 'rc-config-label';
-    tiLabel.textContent = 'When';
-    timeRow.appendChild(tiLabel);
-    var tiSel = document.createElement('select');
-    tiSel.className = 'rc-select rc-config-select';
-    var timeOpts = ['now', 'next_round'];
-    for (var j = 0; j < timeOpts.length; j++) {
-      var opt2 = document.createElement('option');
-      opt2.value = timeOpts[j];
-      opt2.textContent = TIMING_LABELS[timeOpts[j]] || timeOpts[j];
-      if (timeOpts[j] === rcState.timing) opt2.selected = true;
-      tiSel.appendChild(opt2);
-    }
-    tiSel.addEventListener('change', function() {
-      rcState.timing = tiSel.value;
-      updateRulePreview();
-    });
-    timeRow.appendChild(tiSel);
-    rcActionConfig.appendChild(timeRow);
-  }
 
   if (cfg.params) {
     for (var k = 0; k < cfg.params.length; k++) {
@@ -511,6 +467,61 @@ function renderActionConfig() {
       rcActionConfig.appendChild(paramRow);
     }
   }
+
+  var advDiv = document.createElement('div');
+  advDiv.id = 'rc-action-adv';
+  advDiv.className = 'rc-action-adv' + (rcState.showActionAdv ? '' : ' hidden');
+
+  if (cfg.targets && cfg.targets.length > 0) {
+    var targetRow = document.createElement('div');
+    targetRow.className = 'rc-config-row';
+    var tLabel = document.createElement('span');
+    tLabel.className = 'rc-config-label';
+    tLabel.textContent = 'Who';
+    targetRow.appendChild(tLabel);
+    var tSel = document.createElement('select');
+    tSel.className = 'rc-select rc-config-select';
+    for (var i = 0; i < cfg.targets.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = cfg.targets[i];
+      opt.textContent = TARGET_LABELS[cfg.targets[i]] || cfg.targets[i];
+      if (cfg.targets[i] === rcState.target) opt.selected = true;
+      tSel.appendChild(opt);
+    }
+    tSel.addEventListener('change', function() {
+      rcState.target = tSel.value;
+      updateRulePreview();
+    });
+    targetRow.appendChild(tSel);
+    advDiv.appendChild(targetRow);
+  }
+
+  if (cfg.timing) {
+    var timeRow = document.createElement('div');
+    timeRow.className = 'rc-config-row';
+    var tiLabel = document.createElement('span');
+    tiLabel.className = 'rc-config-label';
+    tiLabel.textContent = 'When';
+    timeRow.appendChild(tiLabel);
+    var tiSel = document.createElement('select');
+    tiSel.className = 'rc-select rc-config-select';
+    var timeOpts = ['now', 'next_round'];
+    for (var j = 0; j < timeOpts.length; j++) {
+      var opt2 = document.createElement('option');
+      opt2.value = timeOpts[j];
+      opt2.textContent = TIMING_LABELS[timeOpts[j]] || timeOpts[j];
+      if (timeOpts[j] === rcState.timing) opt2.selected = true;
+      tiSel.appendChild(opt2);
+    }
+    tiSel.addEventListener('change', function() {
+      rcState.timing = tiSel.value;
+      updateRulePreview();
+    });
+    timeRow.appendChild(tiSel);
+    advDiv.appendChild(timeRow);
+  }
+
+  rcActionConfig.appendChild(advDiv);
 }
 
 function getDesc(cfg) {
@@ -529,9 +540,23 @@ function getDesc(cfg) {
 
 function updateRulePreview() {
   if (!rcState) return;
-  var suitLabel = rcState.suit === 'any' ? '' : rcState.suit;
-  var rankLabel = rcState.rank === 'any' ? '' : rcState.rank;
-  var cardDesc = suitLabel || rankLabel ? (suitLabel + ' ' + rankLabel).trim() : 'a card';
+  var cardDesc = '';
+  if (rcState.advOpen && (rcState.advTrigger.type !== 'after_card_played' || rcState.advConditions.length > 0)) {
+    var tDef = getDef(RC_TRIGGER_DEFS, rcState.advTrigger.type);
+    cardDesc = tDef ? fillDesc(tDef, rcState.advTrigger.params) : '?';
+    if (rcState.advConditions.length > 0) {
+      var condTexts = [];
+      for (var i = 0; i < rcState.advConditions.length; i++) {
+        var cDef = getDef(RC_CONDITION_DEFS, rcState.advConditions[i].type);
+        if (cDef) condTexts.push(fillDesc(cDef, rcState.advConditions[i].params));
+      }
+      if (condTexts.length > 0) cardDesc += ' if ' + condTexts.join(' and ');
+    }
+  } else {
+    var suitLabel = rcState.suit === 'any' ? '' : rcState.suit;
+    var rankLabel = rcState.rank === 'any' ? '' : rcState.rank;
+    cardDesc = suitLabel || rankLabel ? (suitLabel + ' ' + rankLabel).trim() : 'a card';
+  }
   var cfg = SIMPLE_ACTIONS[rcState.actionKey];
   var actionDesc = cfg ? getDesc(cfg) : '?';
   rcPreview.textContent = 'When ' + cardDesc + ' is played, ' + actionDesc + ' (or draw 1 card)';
@@ -539,18 +564,24 @@ function updateRulePreview() {
 
 function buildRuleForSubmit() {
   var conditions = [];
-  if (rcState.suit !== 'any') {
-    if (rcState.suit === 'red suits') {
-      conditions.push({ type: 'red_black', params: { color: 'red' } });
-    } else if (rcState.suit === 'black suits') {
-      conditions.push({ type: 'red_black', params: { color: 'black' } });
-    } else {
-      conditions.push({ type: 'specific_suit', params: { suit: rcState.suit } });
+  if (rcState.advOpen && (rcState.advTrigger.type !== 'after_card_played' || rcState.advConditions.length > 0)) {
+    conditions = rcState.advConditions.slice();
+  } else {
+    if (rcState.suit !== 'any') {
+      if (rcState.suit === 'red suits') {
+        conditions.push({ type: 'red_black', params: { color: 'red' } });
+      } else if (rcState.suit === 'black suits') {
+        conditions.push({ type: 'red_black', params: { color: 'black' } });
+      } else {
+        conditions.push({ type: 'specific_suit', params: { suit: rcState.suit } });
+      }
+    }
+    if (rcState.rank !== 'any') {
+      conditions.push({ type: 'specific_rank', params: { rank: rcState.rank } });
     }
   }
-  if (rcState.rank !== 'any') {
-    conditions.push({ type: 'specific_rank', params: { rank: rcState.rank } });
-  }
+  var triggerType = rcState.advOpen && rcState.advTrigger.type !== 'after_card_played' ? rcState.advTrigger.type : 'after_card_played';
+  var triggerParams = rcState.advOpen && rcState.advTrigger.type !== 'after_card_played' ? rcState.advTrigger.params : {};
   var cfg = SIMPLE_ACTIONS[rcState.actionKey];
   var action = {
     type: cfg.mapType,
@@ -563,16 +594,143 @@ function buildRuleForSubmit() {
   };
   return {
     name: rcRuleName.value.trim(),
-    trigger: { type: 'after_card_played', params: {} },
+    trigger: { type: triggerType, params: triggerParams },
     conditions: conditions,
     actions: [action]
   };
+}
+
+function getDefaultParams(def) {
+  var p = {};
+  if (!def || !def.params) return p;
+  for (var i = 0; i < def.params.length; i++) {
+    var paramDef = def.params[i];
+    if (paramDef.default !== undefined) {
+      p[paramDef.name] = paramDef.default;
+    } else if (paramDef.type === 'select' && paramDef.options && paramDef.options.length > 0) {
+      p[paramDef.name] = paramDef.options[0];
+    } else if (paramDef.type === 'number') {
+      p[paramDef.name] = paramDef.min || 1;
+    } else if (paramDef.type === 'string') {
+      p[paramDef.name] = '';
+    }
+  }
+  return p;
+}
+
+function renderParams(container, def, values, onChange) {
+  container.innerHTML = '';
+  if (!def || !def.params || def.params.length === 0) return;
+  for (var i = 0; i < def.params.length; i++) {
+    var p = def.params[i];
+    var val = values[p.name] !== undefined ? values[p.name] : '';
+    var wrapper = document.createElement('div');
+    wrapper.className = 'rc-param-wrapper';
+    var label = document.createElement('span');
+    label.className = 'rc-param-label';
+    label.textContent = p.label;
+    wrapper.appendChild(label);
+    if (p.type === 'select') {
+      var sel = document.createElement('select');
+      sel.className = 'rc-select rc-param-select';
+      for (var j = 0; j < p.options.length; j++) {
+        var opt = document.createElement('option');
+        opt.value = p.options[j];
+        opt.textContent = p.options[j].charAt(0).toUpperCase() + p.options[j].slice(1);
+        if (p.options[j] === val) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener('change', function(paramName, s) {
+        return function() { values[paramName] = s.value; if (onChange) onChange(); };
+      }(p.name, sel));
+      wrapper.appendChild(sel);
+    } else if (p.type === 'number') {
+      var inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'rc-input rc-param-input';
+      inp.min = p.min || 1;
+      inp.max = p.max || 10;
+      inp.value = val || p.min || 1;
+      inp.addEventListener('input', function(paramName, ipt) {
+        return function() { values[paramName] = parseInt(ipt.value) || (p.min || 1); if (onChange) onChange(); };
+      }(p.name, inp));
+      wrapper.appendChild(inp);
+    } else if (p.type === 'string') {
+      var inp2 = document.createElement('input');
+      inp2.type = 'text';
+      inp2.className = 'rc-input rc-param-input';
+      inp2.placeholder = p.label;
+      inp2.value = val || '';
+      inp2.addEventListener('input', function(paramName, ipt) {
+        return function() { values[paramName] = ipt.value; if (onChange) onChange(); };
+      }(p.name, inp2));
+      wrapper.appendChild(inp2);
+    }
+    container.appendChild(wrapper);
+  }
+}
+
+function renderAdvConditionBlock(idx) {
+  var cond = rcState.advConditions[idx];
+  var def = getDef(RC_CONDITION_DEFS, cond.type);
+  if (!def) return;
+  var block = document.createElement('div');
+  block.className = 'rc-condition-block';
+  block.dataset.index = idx;
+  var sel = document.createElement('select');
+  sel.className = 'rc-select rc-condition-select';
+  for (var i = 0; i < RC_CONDITION_DEFS.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = RC_CONDITION_DEFS[i].type;
+    opt.textContent = RC_CONDITION_DEFS[i].name;
+    if (RC_CONDITION_DEFS[i].type === cond.type) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', function(index, select) {
+    return function() {
+      var newDef = getDef(RC_CONDITION_DEFS, select.value);
+      if (newDef) {
+        rcState.advConditions[index] = { type: select.value, params: getDefaultParams(newDef) };
+        rebuildAdvConditions();
+        updateRulePreview();
+      }
+    };
+  }(idx, sel));
+  block.appendChild(sel);
+  renderParams(block, def, cond.params, updateRulePreview);
+  var removeBtn = document.createElement('button');
+  removeBtn.className = 'rc-remove-btn';
+  removeBtn.textContent = 'Remove';
+  removeBtn.addEventListener('click', function(index) {
+    return function() {
+      rcState.advConditions.splice(index, 1);
+      rebuildAdvConditions();
+      updateRulePreview();
+    };
+  }(idx));
+  block.appendChild(removeBtn);
+  var existing = rcAdvConditionsList.children[idx];
+  if (existing) {
+    rcAdvConditionsList.replaceChild(block, existing);
+  } else {
+    rcAdvConditionsList.appendChild(block);
+  }
+}
+
+function rebuildAdvConditions() {
+  rcAdvConditionsList.innerHTML = '';
+  if (!rcState.advOpen) return;
+  for (var i = 0; i < rcState.advConditions.length; i++) {
+    renderAdvConditionBlock(i);
+  }
+  rcAdvAddCondition.classList.toggle('hidden', rcState.advConditions.length >= 5);
 }
 
 function initRuleCreator() {
   populateSelect(rcWhenSuit, SUIT_OPTIONS, 'any');
   populateSelect(rcWhenRank, RANK_OPTIONS, 'any');
   populateSelect(rcActionType, SIMPLE_ACTION_KEYS.map(function(k) { return { value: k, label: SIMPLE_ACTIONS[k].name }; }), 'skip_player');
+  populateSelect(rcAdvTriggerType, RC_TRIGGER_DEFS, 'after_card_played');
 
   rcWhenSuit.addEventListener('change', function() {
     rcState.suit = rcWhenSuit.value;
@@ -608,6 +766,44 @@ function initRuleCreator() {
     updateRulePreview();
   });
 
+  rcActionGear.addEventListener('click', function() {
+    rcState.showActionAdv = !rcState.showActionAdv;
+    rcActionGear.classList.toggle('rc-adv-toggle--active', rcState.showActionAdv);
+    var adv = document.getElementById('rc-action-adv');
+    if (adv) adv.classList.toggle('hidden', !rcState.showActionAdv);
+  });
+
+  rcAdvToggle.addEventListener('click', function() {
+    rcState.advOpen = !rcState.advOpen;
+    rcAdvPanel.classList.toggle('hidden', !rcState.advOpen);
+    rcAdvToggle.classList.toggle('rc-adv-toggle--active', rcState.advOpen);
+    if (rcState.advOpen) {
+      rcAdvTriggerType.value = rcState.advTrigger.type;
+      rebuildAdvConditions();
+    }
+    updateRulePreview();
+  });
+
+  rcAdvTriggerType.addEventListener('change', function() {
+    var type = rcAdvTriggerType.value;
+    var def = getDef(RC_TRIGGER_DEFS, type);
+    if (def) {
+      rcState.advTrigger = { type: type, params: getDefaultParams(def) };
+      updateRulePreview();
+    }
+  });
+
+  rcAdvAddCondition.addEventListener('click', function() {
+    if (rcState.advConditions.length >= 5) {
+      showToast('Maximum 5 extra conditions', 'error');
+      return;
+    }
+    var def = getDef(RC_CONDITION_DEFS, 'specific_suit');
+    rcState.advConditions.push({ type: 'specific_suit', params: getDefaultParams(def) });
+    rebuildAdvConditions();
+    updateRulePreview();
+  });
+
   rcBtnCreate.addEventListener('click', function() {
     var name = rcRuleName.value.trim();
     if (!name) { showToast('Give your rule a name', 'error'); return; }
@@ -639,13 +835,23 @@ function showRuleCreator(data) {
     actionKey: 'skip_player',
     target: 'next',
     timing: 'now',
-    actionParams: {}
+    actionParams: {},
+    showActionAdv: false,
+    advOpen: false,
+    advTrigger: { type: 'after_card_played', params: {} },
+    advConditions: []
   };
   rcRuleName.value = '';
   rcWhenSuit.value = 'any';
   rcWhenRank.value = 'any';
   rcWhenLabel.textContent = 'card';
   rcActionType.value = 'skip_player';
+  rcActionGear.classList.remove('rc-adv-toggle--active');
+  rcAdvToggle.classList.remove('rc-adv-toggle--active');
+  rcAdvPanel.classList.add('hidden');
+  rcAdvTriggerType.value = 'after_card_played';
+  rcAdvConditionsList.innerHTML = '';
+  rcAdvAddCondition.classList.add('hidden');
   renderActionConfig();
   rcBtnCreate.disabled = false;
   rcBtnCreate.textContent = 'CREATE RULE';

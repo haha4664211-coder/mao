@@ -1105,6 +1105,13 @@ html, body {
   margin-bottom: 6px;
 }
 
+.rc-label-sm {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
 .rc-label-extra {
   color: var(--text-secondary);
 }
@@ -1123,6 +1130,21 @@ html, body {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px;
+}
+
+.rc-action-row .rc-adv-toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.rc-action-row:hover .rc-adv-toggle {
+  opacity: 0.6;
+}
+
+.rc-action-row .rc-adv-toggle--active {
+  opacity: 1 !important;
 }
 
 .rc-trigger-row {
@@ -1161,6 +1183,15 @@ html, body {
   background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 8px;
+}
+
+.rc-action-adv {
+  border-top: 1px dashed rgba(255,255,255,0.08);
+  padding-top: 8px;
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .rc-config-row {
@@ -1278,6 +1309,43 @@ html, body {
 
 .rc-preview-section {
   margin-top: 4px;
+}
+
+.rc-adv-toggle {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.15);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  vertical-align: middle;
+  line-height: 1;
+  transition: color 0.2s;
+  margin-left: 6px;
+}
+
+.rc-adv-toggle:hover {
+  color: rgba(255,255,255,0.4);
+}
+
+.rc-adv-toggle--active {
+  color: var(--accent-gold);
+}
+
+.rc-adv-panel {
+  margin-top: 10px;
+}
+
+.rc-adv-inner {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.rc-adv-trigger-row {
+  border-color: rgba(255, 215, 0, 0.15);
+  background: rgba(255, 215, 0, 0.03);
 }
 
 .rc-preview {

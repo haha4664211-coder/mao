@@ -126,11 +126,26 @@
       </div>
 
       <div class="rc-section">
-        <label class="rc-label">What happens</label>
+        <label class="rc-label">
+          What happens
+          <button id="rc-adv-toggle" class="rc-adv-toggle" title="⚙ advanced">⚙</button>
+        </label>
         <div class="rc-row rc-action-row">
           <select id="rc-action-type" class="rc-select"></select>
+          <button id="rc-action-gear" class="rc-adv-toggle" title="⚙ Who & When">⚙</button>
         </div>
         <div id="rc-action-config" class="rc-action-config"></div>
+        <div id="rc-adv-panel" class="rc-adv-panel hidden">
+          <div class="rc-adv-inner">
+            <label class="rc-label rc-label-sm">Trigger type <span class="rc-optional">(advanced)</span></label>
+            <div class="rc-row rc-adv-trigger-row">
+              <select id="rc-adv-trigger-type" class="rc-select"></select>
+            </div>
+            <label class="rc-label rc-label-sm" style="margin-top:10px">Extra conditions <span class="rc-optional">(optional)</span></label>
+            <div id="rc-adv-conditions-list"></div>
+            <button id="rc-adv-add-condition" class="rc-add-btn hidden">+ Add condition</button>
+          </div>
+        </div>
       </div>
 
       <div class="rc-section rc-preview-section">
