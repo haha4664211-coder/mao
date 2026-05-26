@@ -1685,22 +1685,29 @@ html, body {
 }
 
 .rc-trigger-row-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto auto 1fr auto;
+  gap: 6px;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  margin-bottom: 6px;
+  padding: 6px 8px;
+  margin-bottom: 5px;
   border-radius: 8px;
   background: rgba(100, 181, 246, 0.06);
   border: 1px solid rgba(100, 181, 246, 0.2);
 }
 
-.rc-trigger-suit,
-.rc-trigger-rank {
-  padding: 6px 10px;
+.rc-trigger-suit {
+  padding: 5px 8px;
   font-size: 13px;
+  width: 100%;
   min-width: 0;
-  flex: 1;
+}
+
+.rc-trigger-rank {
+  padding: 5px 8px;
+  font-size: 13px;
+  width: 100%;
+  min-width: 0;
 }
 
 .rc-trigger-remove {
