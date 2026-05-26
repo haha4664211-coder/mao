@@ -820,18 +820,29 @@ function showBlockRuleApproved(rule, round) {
     var suitLabels = { any: 'any suit', same_suit: 'same suit', same_color: 'same color', diff_color: 'different color' };
     var sl = suitLabels[p.suitConstraint] || (p.suitConstraint === 'specific' ? (p.specificSuits || []).join('/') : 'any suit');
     preview += 'When a card is played with offset ' + dirLabel + (p.offset || 1) + ' (' + sl + ')';
-  } else {
-    var suit = '';
-    var rank = '';
-    if (rule.conditions) {
-      for (var i = 0; i < rule.conditions.length; i++) {
-        var c = rule.conditions[i];
+  } else { // This block handles 'after_card_played'
+    var cardDescParts = [];
+    if (rule.orConditions && rule.orConditions.length > 0) {
+      // For simplicity in preview, just process the first OR group
+      var firstGroup = rule.orConditions[0];
+      var suit = '';
+      var rank = '';
+      for (var i = 0; i < firstGroup.length; i++) {
+        var c = firstGroup[i];
         if (c.type === 'specific_suit') suit = c.params.suit;
         if (c.type === 'specific_rank') rank = c.params.rank;
         if (c.type === 'red_black') suit = c.params.color + ' suits';
       }
+      var label = (suit || rank) ? (suit + ' ' + rank).trim() : 'a card';
+      cardDescParts.push(label);
+
+      // If there are more OR groups, indicate that
+      if (rule.orConditions.length > 1) {
+        cardDescParts.push(' (and more)');
+      }
     }
-    var cardDesc = suit || rank ? (suit + ' ' + rank).trim() : 'a card';
+
+    var cardDesc = cardDescParts.length > 0 ? cardDescParts.join(' ') : 'a card';
     preview += 'When ' + cardDesc + ' is played';
   }
 
