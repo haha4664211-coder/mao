@@ -71,7 +71,9 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - Auto-reshuffle when deck runs out (discard pile shuffled back, top card stays)
 - 5 cards dealt per player, 1 starts the discard pile
 - Turn-based: play a card matching the top card's suit or rank, draw, or end turn
-- Bots enforce suit/rank matching as a built-in rule — they will punish players who play off-suit/rank even if no hidden rule covers it (gated by bot difficulty and detect chance)
+- **Bad Card punish** — a red "BAD CARD" button always punishes the last player who played; their card is returned to hand + they draw a penalty card from the deck. The penalty card can be **punished back** like any other punishment.
+- **Back to Deck** — next to the "PUNISH BACK!" button, a "BACK TO DECK" button removes the penalty card from your hand and inserts it at a random position in the deck (never on top).
+- Bots enforce suit/rank matching as a built-in rule — they will punish players who play off-suit/rank even if no hidden rule covers it (gated by bot difficulty and detect chance). Bots use the **Bad Card** punish (card returned + penalty) for base rule violations, and the standard **simple punish** (penalty only) for hidden rule violations.
 - **Punish back** — if you are punished (given a card), you can "punish back" to return it. Chain is infinite: punish → punish back → punish back → ... indefinitely (each swap triggers a new "PUNISH BACK!" button on the other side)
 - Drawing auto-ends the turn and passes to next player
 - Punishment system: accuse a player → group vote → majority decides penalty
@@ -129,7 +131,7 @@ Suits: `clubs`, `diamonds`, `hearts`, `spades`
 - `join_lobby` / `create_lobby` — room management (join works mid-game)
 - `toggle_ready` / `start_game` — lobby state
 - `play_card` / `draw_card` / `end_turn` — turn actions
-- `punish_player` / `vote_punishment` — social punishment
+- `punish_player` / `bad_card_punish` / `punish_back` / `back_to_deck` / `vote_punishment` — punishment events
 - `add_bot` / `remove_bot` / `set_bot_level` — bot management (host only)
 - `submit_block_rule` / `confirm_rule` — rule creation
 - `chat_message`, `knock_on_table`, `log` — social events
