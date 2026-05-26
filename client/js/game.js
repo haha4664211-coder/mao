@@ -1008,12 +1008,15 @@ function animateCardPlay(card, playerId) {
 function animateCardDraw(card) {
   if (!card) return;
 
+  var gameTable = document.querySelector('.game-table');
   var drawPileEl = document.getElementById('draw-pile');
-  if (!drawPileEl) return;
+  if (!gameTable || !drawPileEl) return;
+
+  var tableRect = gameTable.getBoundingClientRect();
   var pileRect = drawPileEl.getBoundingClientRect();
 
-  var centerX = window.innerWidth / 2;
-  var centerY = window.innerHeight / 2;
+  var startX = pileRect.left - tableRect.left + (pileRect.width / 2);
+  var startY = pileRect.top - tableRect.top;
 
   var animEl = document.createElement('div');
   animEl.className = 'card-draw-animation';
@@ -1023,24 +1026,18 @@ function animateCardDraw(card) {
 
   animEl.innerHTML =
     '<div class="card-draw-inner">' +
+    '<div class="card-draw-label">DREW</div>' +
     '<img src="' + imgSrc + '" alt="' + displayName + '">' +
     '</div>';
 
-  animEl.style.left = (pileRect.left + pileRect.width / 2 - 50) + 'px';
-  animEl.style.top = (pileRect.top + pileRect.height / 2 - 70) + 'px';
+  animEl.style.left = (startX - 50) + 'px';
+  animEl.style.top = (startY - 70) + 'px';
 
-  document.body.appendChild(animEl);
-
-  requestAnimationFrame(function() {
-    animEl.style.left = (centerX - 50) + 'px';
-    animEl.style.top = (centerY - 70) + 'px';
-    animEl.style.transform = 'rotate(720deg) scale(1.2)';
-    animEl.style.opacity = '0';
-  });
+  gameTable.appendChild(animEl);
 
   setTimeout(function() {
     if (animEl.parentNode) animEl.parentNode.removeChild(animEl);
-  }, 600);
+  }, 3000);
 }
 
 // Cooldown timer: update UI every second
