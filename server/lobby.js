@@ -46,11 +46,14 @@ class Lobby {
     return {
       code: this.code,
       hostId: this.hostId,
+      gameInProgress: !!this.game,
       players: this.players.map(p => ({
         id: p.id,
         nickname: p.nickname,
         isReady: p.isReady,
-        isHost: p.isHost
+        isHost: p.isHost,
+        isBot: p.isBot || false,
+        botLevel: p.botLevel || null
       }))
     };
   }

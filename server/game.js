@@ -223,6 +223,23 @@ class Game {
     ) % this.players.length;
   }
 
+  addPlayer(playerId, nickname, isBot = false, botLevel = null) {
+    const hand = [];
+    for (let i = 0; i < 5; i++) {
+      if (this.deck.length === 0) {
+        if (this.discardPile.length <= 1) break;
+        const topCard = this.discardPile.pop();
+        this.deck = this.discardPile;
+        this.discardPile = [topCard];
+        this.shuffle();
+      }
+      hand.push(this.deck.pop());
+    }
+    const player = { id: playerId, nickname, hand, isConnected: true, isBot, botLevel };
+    this.players.push(player);
+    return player;
+  }
+
   addRule(rule) {
     rule.hidden = rule.hidden !== false;
     this.rules.push(rule);

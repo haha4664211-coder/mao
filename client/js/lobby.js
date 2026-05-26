@@ -13,6 +13,16 @@ let botConfigPopup = null;
 function renderLobby(state) {
   roomCodeEl.textContent = state.code;
 
+  var existingBanner = document.getElementById('game-in-progress-banner');
+  if (existingBanner) existingBanner.remove();
+  if (state.gameInProgress) {
+    var banner = document.createElement('div');
+    banner.id = 'game-in-progress-banner';
+    banner.style.cssText = 'text-align:center;padding:10px;margin-bottom:12px;background:var(--accent-purple);color:#fff;border-radius:6px;font-weight:700;font-size:14px';
+    banner.textContent = '⚡ GAME IN PROGRESS — joining mid-game';
+    document.querySelector('.lobby-container').insertBefore(banner, lobbyPlayersEl);
+  }
+
   lobbyPlayersEl.innerHTML = '';
   state.players.forEach(p => {
     const div = document.createElement('div');

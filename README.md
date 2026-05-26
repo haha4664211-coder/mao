@@ -46,12 +46,13 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 ## Feature Overview
 
 ### Lobby & Multiplayer
-- Host/join via 6-digit room code
+- Host/join via 6-digit room code (always visible in top bar during game)
 - Player list with ready states, host badge, kick button
 - Copy room code to clipboard
 - In-game chat as a floating minimizable panel (top-right)
 - Host migration when host disconnects
 - Reconnection on page refresh (localStorage)
+- **Mid-game joining** — players can join even after rounds have been played; dealt a fresh hand from the deck and can play immediately
 
 ### Bot Opponents
 - Add/remove bots mid-lobby or mid-game (host only)
@@ -122,13 +123,13 @@ Suits: `clubs`, `diamonds`, `hearts`, `spades`
 | Impossible | 100%   | 0%     | 0%      | 100%        |
 
 ### Socket Events
-- `join_lobby` / `create_lobby` — room management
+- `join_lobby` / `create_lobby` — room management (join works mid-game)
 - `toggle_ready` / `start_game` — lobby state
 - `play_card` / `draw_card` / `end_turn` — turn actions
 - `punish_player` / `vote_punishment` — social punishment
 - `add_bot` / `remove_bot` / `set_bot_level` — bot management (host only)
 - `submit_block_rule` / `confirm_rule` — rule creation
-- `chat_message`, `knock_on_table` — social events
+- `chat_message`, `knock_on_table`, `log` — social events
 - `reconnect_game` — reconnection
 
 ## Extending

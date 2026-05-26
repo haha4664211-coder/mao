@@ -1282,6 +1282,10 @@ btnKnock.addEventListener('click', function() {
   socket.emit('knock');
 });
 
+socket.on('log', function(data) {
+  addLogEntry({ nickname: '', message: data.message });
+});
+
 socket.on('knock', function(data) {
   addLogEntry({ nickname: data.nickname, message: '👊 knocks on the table!' });
 });

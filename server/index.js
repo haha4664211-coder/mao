@@ -61,16 +61,27 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Room not found' });
       return;
     }
-    if (lobby.game) {
-      socket.emit('error', { message: 'Game already in progress' });
-      return;
-    }
     if (lobby.players.length >= 8) {
       socket.emit('error', { message: 'Lobby is full' });
       return;
     }
     if (lobby.players.some(p => p.nickname.toLowerCase() === nickname.toLowerCase())) {
       socket.emit('error', { message: 'Nickname already taken' });
+      return;
+    }
+
+    // Mid-game join
+    if (lobby.game) {
+      const player = lobby.game.addPlayer(socket.id, nickname);
+      lobby.players.push({
+        id: socket.id, nickname, isReady: true, isHost: false, isBot: false
+      });
+      socket.join(code);
+      const fullState = lobby.game.getFullState(socket.id);
+      socket.emit('game_state', fullState);
+      broadcastGameState(lobby.game);
+      io.to(lobby.code).emit('log', { message: `${nickname} joined mid-game!` });
+      console.log(`${nickname} joined lobby ${code} mid-game`);
       return;
     }
 
