@@ -212,6 +212,7 @@ io.on('connection', (socket) => {
       playerId: socket.id,
       card: result.card
     });
+    if (lobby.botController) lobby.botController.onCardPlayed(socket.id, result.card);
     if (result.winner) {
       io.to(lobby.code).emit('round_won', {
         winnerId: result.winner.id,

@@ -226,6 +226,7 @@ class BotController {
 
     this.broadcastGameState();
     io.to(code).emit('card_played', { playerId: playerId, card: result.card });
+    this.onCardPlayed(playerId, result.card);
 
     if (result.winner) {
       io.to(code).emit('round_won', {
@@ -453,66 +454,137 @@ class BotController {
 
   onRoundEnd() {
     var self = this;
+    var round = self.game.round;
     setTimeout(function() {
-      if (self.game.state === 'round_end' && self.game.lastWinner && self.isBotPlayer(self.game.lastWinner.id)) {
-        var rules = self.botPlayers.size;
-        var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'must_say', 'knock'];
-        var botSuits = ['any', 'spades', 'clubs', 'diamonds', 'hearts'];
-        var botRanks = ['any', 'king', 'queen', 'jack', 'ace', '7'];
+      if (!self.game.lastWinner || !self.isBotPlayer(self.game.lastWinner.id)) return;
+      if (self.game.round !== round) return;
+      var rules = self.botPlayers.size;
+      var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'must_say', 'knock'];
+      var botSuits = ['any', 'spades', 'clubs', 'diamonds', 'hearts'];
+      var botRanks = ['any', 'king', 'queen', 'jack', 'ace', '7'];
 
-        var action = botActions[Math.floor(Math.random() * botActions.length)];
-        var suit = botSuits[Math.floor(Math.random() * botSuits.length)];
-        var rank = botRanks[Math.floor(Math.random() * botRanks.length)];
+      var action = botActions[Math.floor(Math.random() * botActions.length)];
+      var suit = botSuits[Math.floor(Math.random() * botSuits.length)];
+      var rank = botRanks[Math.floor(Math.random() * botRanks.length)];
 
-        var conditions = [];
-        if (suit !== 'any') {
-          if (suit === 'red suits' || suit === 'black suits') {
-            conditions.push({ type: 'red_black', params: { color: suit === 'red suits' ? 'red' : 'black' } });
-          } else {
-            conditions.push({ type: 'specific_suit', params: { suit: suit } });
-          }
+      var conditions = [];
+      if (suit !== 'any') {
+        if (suit === 'red suits' || suit === 'black suits') {
+          conditions.push({ type: 'red_black', params: { color: suit === 'red suits' ? 'red' : 'black' } });
+        } else {
+          conditions.push({ type: 'specific_suit', params: { suit: suit } });
         }
-        if (rank !== 'any') {
-          conditions.push({ type: 'specific_rank', params: { rank: rank } });
+      }
+      if (rank !== 'any') {
+        conditions.push({ type: 'specific_rank', params: { rank: rank } });
+      }
+
+      var simpleActions = {
+        skip_player: { mapType: 'skip_turn', targets: ['next', 'prev', 'that'], timing: true },
+        reverse: { mapType: 'reverse_direction', targets: [], timing: true },
+        double_turn: { mapType: 'play_again', targets: ['that', 'next'], timing: true },
+        change_suit: { mapType: 'change_active_suit', targets: ['that', 'next'], timing: true, params: { suit: ['clubs','diamonds','hearts','spades'][Math.floor(Math.random()*4)] } },
+        must_say: { mapType: 'must_say_phrase', targets: ['that', 'next', 'prev', 'all'], timing: false, params: { phrase: ['please','thank you','knock knock','mao','oops'][Math.floor(Math.random()*5)] } },
+        knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true }
+      };
+
+      var sa = simpleActions[action];
+      var actionObj = { type: sa.mapType, params: { target: sa.targets[0] || '', timing: sa.timing ? 'now' : '' } };
+      if (sa.params) {
+        for (var key in sa.params) actionObj.params[key] = sa.params[key];
+      }
+
+      var name = 'Bot Rule ' + (self.game.rules.length + 1);
+      var rule = {
+        name: name,
+        trigger: { type: 'after_card_played', params: {} },
+        conditions: conditions,
+        actions: [actionObj],
+        type: 'block',
+        createdBy: self.game.lastWinner.nickname,
+        createdById: self.game.lastWinner.id,
+        round: self.game.round,
+        hidden: true
+      };
+
+      self.game.addRule(rule);
+      self.broadcastGameState();
+      self.io.to(self.lobbyCode).emit('rule_created_notification', {
+        round: self.game.round,
+        ruleCount: self.game.rules.length,
+        creatorId: self.game.lastWinner.id
+      });
+    }, 2000 + Math.random() * 3000);
+  }
+
+  onCardPlayed(playerId, card) {
+    for (var i = 0; i < this.game.players.length; i++) {
+      var p = this.game.players[i];
+      if (!p.isBot) continue;
+      this.learnFromPlay(p.id, playerId, card);
+    }
+  }
+
+  learnFromPlay(botId, playerId, card) {
+    var mem = this.botMemory.get(botId);
+    if (!mem) return;
+    var stats = mem.stats;
+
+    for (var i = 0; i < this.game.rules.length; i++) {
+      var r = this.game.rules[i];
+      if (r.type !== 'block') continue;
+      if (!r.conditions || r.conditions.length === 0) continue;
+
+      var matches = true;
+      for (var j = 0; j < r.conditions.length; j++) {
+        var c = r.conditions[j];
+        if (c.type === 'specific_suit' && c.params.suit !== card.suit) matches = false;
+        if (c.type === 'specific_rank' && c.params.rank !== card.rank) matches = false;
+        if (c.type === 'red_black') {
+          var isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+          if (c.params.color === 'black' && !(card.suit === 'clubs' || card.suit === 'spades')) matches = false;
+          if (c.params.color === 'red' && !isRed) matches = false;
         }
+      }
+      if (!matches) continue;
 
-        var simpleActions = {
-          skip_player: { mapType: 'skip_turn', targets: ['next', 'prev', 'that'], timing: true },
-          reverse: { mapType: 'reverse_direction', targets: [], timing: true },
-          double_turn: { mapType: 'play_again', targets: ['that', 'next'], timing: true },
-          change_suit: { mapType: 'change_active_suit', targets: ['that', 'next'], timing: true, params: { suit: ['clubs','diamonds','hearts','spades'][Math.floor(Math.random()*4)] } },
-          must_say: { mapType: 'must_say_phrase', targets: ['that', 'next', 'prev', 'all'], timing: false, params: { phrase: ['please','thank you','knock knock','mao','oops'][Math.floor(Math.random()*5)] } },
-          knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true }
-        };
+      if (Math.random() > stats.detectChance) continue;
 
-        var sa = simpleActions[action];
-        var actionObj = { type: sa.mapType, params: { target: sa.targets[0] || '', timing: sa.timing ? 'now' : '' } };
-        if (sa.params) {
-          for (var key in sa.params) actionObj.params[key] = sa.params[key];
+      var alreadyKnown = false;
+      for (var k = 0; k < mem.knownRules.length; k++) {
+        if (mem.knownRules[k].actionType === r.actions[0].type) {
+          alreadyKnown = true;
+          mem.knownRules[k].confidence = Math.min(1, mem.knownRules[k].confidence + 0.2);
+          mem.knownRules[k].lastSeen = Date.now();
+          break;
         }
-
-        var name = 'Bot Rule ' + (self.game.rules.length + 1);
-        var rule = {
-          name: name,
-          trigger: { type: 'after_card_played', params: {} },
-          conditions: conditions,
-          actions: [actionObj],
-          type: 'block',
-          createdBy: self.game.lastWinner.nickname,
-          createdById: self.game.lastWinner.id,
-          round: self.game.round,
-          hidden: true
-        };
-
-        self.game.addRule(rule);
-        self.broadcastGameState();
-        self.io.to(self.lobbyCode).emit('rule_created_notification', {
-          round: self.game.round,
-          ruleCount: self.game.rules.length,
-          creatorId: self.game.lastWinner.id
+      }
+      if (!alreadyKnown) {
+        mem.knownRules.push({
+          actionType: r.actions[0].type,
+          params: r.actions[0].params,
+          conditions: r.conditions,
+          confidence: 0.3,
+          lastSeen: Date.now()
         });
       }
-    }, 2000 + Math.random() * 3000);
+
+      if (playerId === botId) continue;
+      if (Math.random() > stats.detectChance * 0.7) continue;
+      if (this.game.state !== 'playing') return;
+
+      var self = this;
+      setTimeout(function() {
+        if (self.game.state !== 'playing') return;
+        var result = self.game.simplePunish(botId, playerId);
+        if (result.success) {
+          self.io.to(self.lobbyCode).emit('player_punished', result);
+          self.broadcastGameState();
+        }
+      }, 500 + Math.random() * 1500);
+    }
+
+    this.forgetOldRules(mem, stats);
   }
 }
 

@@ -2,7 +2,7 @@
 
 A private, friend-group implementation of the card game Mao where **rules are hidden**, **punishments are voted on**, and **nobody knows what's legal until someone breaks a rule and gets caught**.
 
-No bots, no matchmaking, no accounts — just a lobby code, your friends, and a slowly growing pile of secret rules that only the round winner knows.
+No matchmaking, no accounts — just a lobby code, your friends, and a slowly growing pile of secret rules that only the round winner knows.
 
 ## Quick Start
 
@@ -19,15 +19,14 @@ Mao is a card game where the winner of each round invents a new rule that nobody
 
 There's no automatic enforcement — the game never tells you what's legal. Everything is social deduction, memory, and bluffing.
 
-The app gives you a visual block-based rule creator (pick triggers like "when a king is played" and actions like "skip the next player") or a free-text AI interpreter if you prefer describing rules in plain English.
-
 ## Project Structure
 
 ```
 ├── server/
 │   ├── index.js       # Express + Socket.IO server, room/event handling
 │   ├── lobby.js       # Lobby class (players, ready, host, kick)
-│   └── game.js        # Game state (deck, turns, punishments, chat)
+│   ├── game.js        # Game state (deck, turns, punishments, chat)
+│   └── bot.js         # Bot AI (turn logic, rule learning, punishment voting)
 ├── client/
 │   ├── index.html     # Single-page app (menu, lobby, game screens)
 │   ├── css/
@@ -35,46 +34,109 @@ The app gives you a visual block-based rule creator (pick triggers like "when a 
 │   └── js/
 │       ├── main.js       # Screen switching, init
 │       ├── menu.js       # Host/join lobby UI
-│       ├── lobby.js      # Player list, ready, kick, copy code
-│       ├── game.js       # Game table, cards, punishment votes, sounds
+│       ├── lobby.js      # Player list, ready, kick, copy code, bot config
+│       ├── game.js       # Game table, cards, punishment votes, rule creator, animations
 │       ├── socket.js     # Socket.IO client, reconnection, toasts
 │       └── particles.js  # Canvas particle system
-├── cards/             # 54 playing card PNGs (loaded automatically)
+├── cards/             # 54+ playing card PNGs (loaded automatically)
 ├── ui/                # UI assets (background image)
 └── package.json
 ```
 
-## Features
+## Feature Overview
 
-- **Hidden rule system** — create rules with a visual block builder (card triggers + actions) that only the creator sees
-- **Social punishment** — players call out suspected rule breaks and the group votes
-- **No rule enforcement** — the game never rejects any action. Players decide what's legal
-- **Server-authoritative** — all game state is managed server-side
-- **Reconnection** — refresh the page and auto-rejoin your game (stored in localStorage)
-- **Host migration** — if the host disconnects, a new host is elected
-- **AI rule validation** — describe a rule in plain English and let an LLM validate it
-- **Knock on table** — a dedicated button for when the rules demand a knock
-- **Sound effects** — card play/draw, turn change, and punishment sounds via Web Audio API
-- **Fullscreen** — click the fullscreen button in-game
-- **Responsive** — works on desktop and mobile browsers
-- **Background particles** — subtle floating particle effects
+### Lobby & Multiplayer
+- Host/join via 6-digit room code
+- Player list with ready states, host badge, kick button
+- Copy room code to clipboard
+- In-game chat as a floating minimizable panel (top-right)
+- Host migration when host disconnects
+- Reconnection on page refresh (localStorage)
 
-## Extending
+### Bot Opponents
+- Add/remove bots mid-lobby or mid-game (host only)
+- 5 difficulty levels: Bad, Medium, Good, Pro, Impossible
+- Bot AI: automatic turn-taking with delay, plays matching cards, draws when no play
+- Rule learning: bots observe card plays and detect rules via pattern matching (rate scales with difficulty)
+- Rule forgetting: bots forget rules over time (rate scales with difficulty)
+- Misplay chance: lower-difficulty bots occasionally play illegal cards
+- Social: bots vote on punishments, can accuse/punish other players for rule violations
+- Bot rule creation: winning bots create random hidden rules
 
-The code is designed to be easy to extend:
+### Gameplay
+- Standard 54-card deck (52 + 2 jokers), 1 or 2 decks selectable
+- Auto-reshuffle when deck runs out (discard pile shuffled back, top card stays)
+- 5 cards dealt per player, 1 starts the discard pile
+- Turn-based: play matching card (suit/rank), draw, or end turn
+- Drawing auto-ends the turn and passes to next player
+- Punishment system: accuse a player → group vote → majority decides penalty
+- Per-player cooldown (500ms) prevents rapid double-plays
+- Knock on table button (👊) for when rules demand it
 
-- **New rules/mechanics**: Add new socket events in `server/index.js`, add handlers in `server/game.js`
-- **New UI screens**: Add a `<div class="screen">` in `index.html`, add `showScreen('name')` in `main.js`
-- **Custom card decks**: Replace the PNGs in `/cards` following the naming convention `<rank>_of_<suit>.png`
+### Hidden Rule Creator
+Opens when you win a round. Block-based builder:
+- **Triggers when…** — dropdown for trigger type (currently "A card is played", space for future triggers)
+- **Suit / Rank selectors** — restrict trigger to a specific suit or rank
+- **What happens** — pick action (Skip, Reverse direction, Double turn, Change suit to…, Must say…, Knock on table)
+- **Who & When (⚙)** — advanced target/timing config for Skip and Reverse
+- **Extra conditions** — toggleable panel for additional conditions (card suit/rank, red/black)
+- **Rule summary** — live preview builds as you configure
+- Actions map to server action types for self-policing
+
+### Animations & Visuals
+- Card play animation: card flies from hand to discard pile with gold glow and bounce (3s keyframe)
+- Card draw animation: card slides from draw pile to the drawing player's avatar with purple glow and flip-in effect
+- Other players see card back when someone draws; drawer sees the face
+- Sound effects via Web Audio API: card play, card draw, punish
+- Dark card-table theme with neon glow effects
+- Responsive layout: 3-zone flex on mobile, cards scaled at 14vw with overlap
+- Canvas particle background
+- Toast notifications for game events
+
+### Server Features
+- All game state is server-authoritative
+- Socket-based real-time communication
+- Error handling with try-catch in bot scheduling (prevents crashes)
+- Player disconnect handled gracefully during active game
+- Discard pile reshuffle on empty deck
+
+## Technical Details
 
 ### Card File Naming
-
-Cards are auto-loaded from `/cards/` using the pattern:
+Cards auto-loaded from `/cards/`:
 - Regular: `<rank>_of_<suit>.png` (e.g. `ace_of_spades.png`, `10_of_hearts.png`)
 - Jokers: `<color>_joker.png` (e.g. `black_joker.png`, `red_joker.png`)
+- Back: `back.png`
 
 Ranks: `ace`, `2`–`10`, `jack`, `queen`, `king`
 Suits: `clubs`, `diamonds`, `hearts`, `spades`
+
+### Bot Levels
+
+| Level      | Detect | Forget | Misplay | Vote Correct |
+|------------|--------|--------|---------|-------------|
+| Bad        | 25%    | 40%    | 30%     | 30%         |
+| Medium     | 50%    | 20%    | 10%     | 60%         |
+| Good       | 75%    | 5%     | 2%      | 85%         |
+| Pro        | 92%    | 1%     | 0%      | 95%         |
+| Impossible | 100%   | 0%     | 0%      | 100%        |
+
+### Socket Events
+- `join_lobby` / `create_lobby` — room management
+- `toggle_ready` / `start_game` — lobby state
+- `play_card` / `draw_card` / `end_turn` — turn actions
+- `punish_player` / `vote_punishment` — social punishment
+- `add_bot` / `remove_bot` / `set_bot_level` — bot management (host only)
+- `submit_block_rule` / `confirm_rule` — rule creation
+- `chat_message`, `knock_on_table` — social events
+- `reconnect_game` — reconnection
+
+## Extending
+
+- **New rules/mechanics**: Add socket events in `server/index.js`, handlers in `server/game.js`
+- **New UI screens**: Add `<div class="screen">` in `index.html`, use `showScreen('name')` in `main.js`
+- **Custom card decks**: Replace PNGs in `/cards`
+- **New bot behaviors**: Add methods to `BotController` in `server/bot.js`
 
 ## Tech Stack
 

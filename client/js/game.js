@@ -1004,8 +1004,21 @@ function animateCardDraw(card, playerId, faceUp) {
   var startX = pileRect.left - tableRect.left + (pileRect.width / 2);
   var startY = pileRect.top - tableRect.top;
 
-  var targetX = tableRect.width / 2;
-  var targetY = tableRect.height * 0.75;
+  var targetX, targetY;
+  if (playerId === myId) {
+    targetX = tableRect.width / 2;
+    targetY = tableRect.height * 0.85;
+  } else {
+    var playerEl = document.querySelector('.other-player[data-player-id="' + playerId + '"]');
+    if (playerEl) {
+      var pr = playerEl.getBoundingClientRect();
+      targetX = pr.left - tableRect.left + pr.width / 2;
+      targetY = pr.top - tableRect.top + pr.height / 2;
+    } else {
+      targetX = tableRect.width / 2;
+      targetY = tableRect.height * 0.25;
+    }
+  }
 
   var dx = targetX - startX;
   var dy = targetY - startY;
@@ -1083,6 +1096,7 @@ function renderOtherPlayers() {
 
     var div = document.createElement('div');
     div.className = 'other-player';
+    div.setAttribute('data-player-id', p.id);
     if (!p.isConnected) div.classList.add('disconnected');
     if (p.id === myId) div.classList.add('is-me');
 
