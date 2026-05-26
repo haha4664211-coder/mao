@@ -68,6 +68,8 @@
       <span class="game-room">ROOM: <span id="game-room-code"></span></span>
     </div>
     <div class="game-controls">
+      <button id="btn-my-rules" class="btn btn-icon" title="My Rules">📜</button>
+      <button id="btn-confused" class="btn btn-icon" title="Confused?">🤷</button>
       <button id="btn-fullscreen" class="btn btn-icon" title="Fullscreen">⛶</button>
       <button id="btn-game-settings" class="btn btn-icon" title="Settings">⚙</button>
       <button id="btn-leave-game" class="btn btn-small btn-danger">LEAVE</button>
@@ -240,6 +242,17 @@
     </div>
     <div class="overlay-actions">
       <button id="btn-settings-close" class="btn btn-primary">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<div id="my-rules-overlay" class="overlay hidden">
+  <div class="my-rules-content">
+    <h3>MY RULES</h3>
+    <div id="my-rules-list" class="my-rules-list"></div>
+    <div class="overlay-actions">
+      <button id="btn-my-rules-download" class="btn btn-primary">DOWNLOAD .TXT</button>
+      <button id="btn-my-rules-close" class="btn btn-secondary">CLOSE</button>
     </div>
   </div>
 </div>

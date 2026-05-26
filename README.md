@@ -79,10 +79,13 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - Punishment system: accuse a player → group vote → majority decides penalty
 - Per-player cooldown (500ms) prevents rapid double-plays
 - Knock on table button (👊) for when rules demand it
+- **🤷 Confused button** — click it and the server checks every player's hand against all hidden rules; anyone holding a matching card draws a penalty
+- **📜 My Rules** — view all your created rules and download them as a `.txt` file
+- Bots cannot create "must say phrase" rules (bots can't speak); bots detect all trigger types including suit change and numeric offset
 
 ### Hidden Rule Creator
 Opens when you win a round. Block-based builder:
-- **Triggers when…** — dropdown for trigger type (currently "A card is played", space for future triggers)
+- **Triggers when…** — dropdown for trigger type: "A card is played", "Suit changes", or "Numeric offset play"
 - **Multiple trigger rows** — add multiple suit/rank combos via "+ Add trigger"; rows are OR'd (e.g. "black 7 OR black 8 OR red 9")
 - **What happens** — pick action (Skip, Reverse direction, Double turn, Change suit to…, Must say…, Knock on table)
 - **Who & When (⚙)** — advanced target/timing config for Skip and Reverse

@@ -445,6 +445,45 @@ class Game {
     return Object.keys(punishment.votes).length >= eligibleVoters.length;
   }
 
+  _cardMatchesAnyRule(card) {
+    for (const r of this.rules) {
+      if (r.type !== 'block') continue;
+      if (r.trigger && r.trigger.type !== 'after_card_played') continue;
+      const groups = r.orConditions && r.orConditions.length > 0 ? r.orConditions : (r.conditions ? [r.conditions] : []);
+      for (const group of groups) {
+        let match = true;
+        for (const c of group) {
+          if (c.type === 'specific_suit' && c.params.suit !== card.suit) { match = false; break; }
+          if (c.type === 'specific_rank' && c.params.rank !== card.rank) { match = false; break; }
+          if (c.type === 'red_black') {
+            const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+            if (c.params.color === 'black' && isRed) { match = false; break; }
+            if (c.params.color === 'red' && !isRed) { match = false; break; }
+          }
+        }
+        if (match) return true;
+      }
+    }
+    return false;
+  }
+
+  confusedPunish(accuserId) {
+    if (this.state !== 'playing') return { success: false, error: 'Game is not in play' };
+    const results = [];
+    for (const p of this.players) {
+      if (p.id === accuserId) continue;
+      for (const card of p.hand) {
+        if (this._cardMatchesAnyRule(card)) {
+          if (this.deck.length === 0) break;
+          const res = this.simplePunish(accuserId, p.id);
+          if (res.success) results.push({ targetId: p.id, card: res.card });
+          break;
+        }
+      }
+    }
+    return { success: true, results };
+  }
+
   simplePunish(accuserId, targetId) {
     const accuser = this.getPlayer(accuserId);
     const target = this.getPlayer(targetId);

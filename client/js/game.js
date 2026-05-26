@@ -26,6 +26,8 @@ const drawPile = document.getElementById('draw-pile');
 const deckCountEl = document.getElementById('deck-count');
 const btnDraw = document.getElementById('btn-draw');
 const btnBadCard = document.getElementById('btn-bad-card');
+const btnMyRules = document.getElementById('btn-my-rules');
+const btnConfused = document.getElementById('btn-confused');
 const btnFullscreen = document.getElementById('btn-fullscreen');
 const btnLeaveGame = document.getElementById('btn-leave-game');
 const btnKnock = document.getElementById('btn-knock');
@@ -38,6 +40,11 @@ const punishmentOverlay = document.getElementById('punishment-overlay');
 const punishmentTitle = document.getElementById('punishment-title');
 const punishmentBody = document.getElementById('punishment-body');
 const punishmentActions = document.getElementById('punishment-actions');
+
+const myRulesOverlay = document.getElementById('my-rules-overlay');
+const myRulesList = document.getElementById('my-rules-list');
+const btnMyRulesDownload = document.getElementById('btn-my-rules-download');
+const btnMyRulesClose = document.getElementById('btn-my-rules-close');
 
 var sound = { play: function(type) { AudioManager.playSfx(type); } };
 
@@ -122,6 +129,18 @@ socket.on('back_to_deck_result', function(data) {
   if (gameState) {
     showToast('Card sent back to the deck!', 'info');
     hidePunishBackButton();
+  }
+});
+
+socket.on('confused_result', function(data) {
+  if (gameState && data.results && data.results.length > 0) {
+    var names = data.results.map(function(r) {
+      var p = gameState.players.find(function(pl) { return pl.id === r.targetId; });
+      return p ? p.nickname : 'Player';
+    });
+    showToast('Confused! ' + names.join(', ') + ' drew a card', 'info');
+  } else if (gameState) {
+    showToast('Confused! Nobody broke any rules', 'info');
   }
 });
 
@@ -770,18 +789,30 @@ function closeRuleCreator() {
 
 function showBlockRuleApproved(rule, round) {
   var preview = '';
-  var suit = '';
-  var rank = '';
-  if (rule.conditions) {
-    for (var i = 0; i < rule.conditions.length; i++) {
-      var c = rule.conditions[i];
-      if (c.type === 'specific_suit') suit = c.params.suit;
-      if (c.type === 'specific_rank') rank = c.params.rank;
-      if (c.type === 'red_black') suit = c.params.color + ' suits';
+  if (rule.trigger && rule.trigger.type === 'after_suit_change') {
+    var from = (rule.trigger.params && rule.trigger.params.from) || 'any';
+    var to = (rule.trigger.params && rule.trigger.params.to) || 'any';
+    preview += 'When suit changes from ' + from.charAt(0).toUpperCase() + from.slice(1) + ' to ' + to.charAt(0).toUpperCase() + to.slice(1);
+  } else if (rule.trigger && rule.trigger.type === 'numeric_offset') {
+    var p = rule.trigger.params || {};
+    var dirLabel = { positive: '+', negative: '−', both: '±' }[p.direction] || '+';
+    var suitLabels = { any: 'any suit', same_suit: 'same suit', same_color: 'same color', diff_color: 'different color' };
+    var sl = suitLabels[p.suitConstraint] || (p.suitConstraint === 'specific' ? (p.specificSuits || []).join('/') : 'any suit');
+    preview += 'When a card is played with offset ' + dirLabel + (p.offset || 1) + ' (' + sl + ')';
+  } else {
+    var suit = '';
+    var rank = '';
+    if (rule.conditions) {
+      for (var i = 0; i < rule.conditions.length; i++) {
+        var c = rule.conditions[i];
+        if (c.type === 'specific_suit') suit = c.params.suit;
+        if (c.type === 'specific_rank') rank = c.params.rank;
+        if (c.type === 'red_black') suit = c.params.color + ' suits';
+      }
     }
+    var cardDesc = suit || rank ? (suit + ' ' + rank).trim() : 'a card';
+    preview += 'When ' + cardDesc + ' is played';
   }
-  var cardDesc = suit || rank ? (suit + ' ' + rank).trim() : 'a card';
-  preview += 'When ' + cardDesc + ' is played';
 
   if (rule.actions && rule.actions.length > 0) {
     var a = rule.actions[0];
@@ -1143,6 +1174,102 @@ btnBadCard.addEventListener('click', function() {
   socket.emit('bad_card_punish');
   sound.play('punish');
 });
+
+btnMyRules.addEventListener('click', function() {
+  showMyRules();
+});
+
+btnConfused.addEventListener('click', function() {
+  socket.emit('confused_punish');
+  sound.play('click');
+  showToast('Checking everyone\'s hand...', 'info');
+});
+
+btnMyRulesClose.addEventListener('click', function() {
+  myRulesOverlay.classList.add('hidden');
+});
+
+btnMyRulesDownload.addEventListener('click', function() {
+  downloadMyRules();
+});
+
+myRulesOverlay.addEventListener('click', function(e) {
+  if (e.target === myRulesOverlay) myRulesOverlay.classList.add('hidden');
+});
+
+function showMyRules() {
+  if (!gameState || !gameState.rules) {
+    showToast('No rules available', 'error');
+    return;
+  }
+  var myRules = gameState.rules.filter(function(r) { return !r.hidden || r.createdById === myId; });
+  myRulesList.innerHTML = '';
+  if (myRules.length === 0) {
+    myRulesList.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:20px">No rules yet</p>';
+  } else {
+    for (var i = 0; i < myRules.length; i++) {
+      var r = myRules[i];
+      var entry = document.createElement('div');
+      entry.className = 'my-rules-entry';
+      var name = r.name || 'Unnamed';
+      var desc = '';
+      if (r.trigger && r.trigger.type === 'after_suit_change') {
+        desc = 'Suit changes from ' + (r.trigger.params && r.trigger.params.from || '?') + ' to ' + (r.trigger.params && r.trigger.params.to || '?');
+      } else if (r.trigger && r.trigger.type === 'numeric_offset') {
+        var p = r.trigger.params || {};
+        var dl = { positive: '+', negative: '−', both: '±' }[p.direction] || '+';
+        desc = 'Offset ' + dl + (p.offset || 1) + ' (' + (p.suitConstraint || 'any') + ')';
+      } else {
+        desc = 'Card played';
+      }
+      if (r.actions && r.actions.length > 0) {
+        var a = r.actions[0];
+        desc += ' → ' + (a.type || '?');
+      }
+      entry.innerHTML = '<div class="mr-name">' + escapeHtml(name) + '</div>' +
+        '<div class="mr-desc">' + escapeHtml(desc) + '</div>' +
+        '<div class="mr-trigger">Round ' + (r.round || '?') + (r.createdBy ? ' by ' + escapeHtml(r.createdBy) : '') + '</div>';
+      myRulesList.appendChild(entry);
+    }
+  }
+  myRulesOverlay.classList.remove('hidden');
+}
+
+function downloadMyRules() {
+  if (!gameState || !gameState.rules) return;
+  var myRules = gameState.rules.filter(function(r) { return !r.hidden || r.createdById === myId; });
+  var lines = [];
+  lines.push('Mao - My Rules');
+  lines.push('==============');
+  lines.push('');
+  for (var i = 0; i < myRules.length; i++) {
+    var r = myRules[i];
+    lines.push('Rule ' + (i + 1) + ': ' + (r.name || 'Unnamed'));
+    lines.push('  Trigger: ' + (r.trigger ? (r.trigger.type || 'card played') : 'card played'));
+    if (r.trigger && r.trigger.params) {
+      for (var k in r.trigger.params) {
+        var val = r.trigger.params[k];
+        if (Array.isArray(val)) val = val.join(', ');
+        if (val) lines.push('    ' + k + ': ' + val);
+      }
+    }
+    if (r.conditions && r.conditions.length > 0) {
+      lines.push('  Conditions: ' + JSON.stringify(r.conditions));
+    }
+    if (r.actions && r.actions.length > 0) {
+      lines.push('  Action: ' + JSON.stringify(r.actions[0]));
+    }
+    lines.push('  Round: ' + (r.round || '?'));
+    lines.push('  Creator: ' + (r.createdBy || '?'));
+    lines.push('');
+  }
+  var blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-mao-rules.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 drawPile.addEventListener('click', function() {
   if (!canAct()) {

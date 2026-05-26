@@ -287,6 +287,19 @@ io.on('connection', (socket) => {
     broadcastGameState(game);
   });
 
+  socket.on('confused_punish', () => {
+    const lobby = findLobbyByPlayer(socket.id);
+    if (!lobby || !lobby.game) return;
+    const result = lobby.game.confusedPunish(socket.id);
+    if (!result.success) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+    const game = lobby.game;
+    io.to(lobby.code).emit('confused_result', result);
+    broadcastGameState(game);
+  });
+
   socket.on('punish_back', () => {
     const lobby = findLobbyByPlayer(socket.id);
     if (!lobby || !lobby.game) return;

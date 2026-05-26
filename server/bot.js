@@ -25,6 +25,18 @@ const ACTION_PATTERNS = [
 const SUIT_NAMES = ['clubs', 'diamonds', 'hearts', 'spades'];
 const RANK_NAMES = ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
 
+const RANK_NUM = { ace: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, jack: 11, queen: 12, king: 13 };
+
+const SUIT_SETS_BOT = {
+  any: ['spades', 'clubs', 'diamonds', 'hearts'],
+  black: ['spades', 'clubs'],
+  red: ['diamonds', 'hearts'],
+  spades: ['spades'],
+  clubs: ['clubs'],
+  diamonds: ['diamonds'],
+  hearts: ['hearts']
+};
+
 class BotController {
   constructor(game, io, lobbyCode) {
     this.game = game;
@@ -327,14 +339,68 @@ class BotController {
     return this._conditionsMatch(rule.conditions, card);
   }
 
+  _suitInSet(suit, setName) {
+    var set = SUIT_SETS_BOT[setName];
+    if (!set) return false;
+    return set.indexOf(suit) !== -1;
+  }
+
+  _triggerMatches(rule, card, prevCard) {
+    if (!rule.trigger) return this._cardMatchesRule(rule, card);
+    if (rule.trigger.type === 'after_card_played' || rule.trigger.type === undefined) {
+      return this._cardMatchesRule(rule, card);
+    }
+    if (rule.trigger.type === 'after_suit_change') {
+      if (!prevCard) return false;
+      var from = rule.trigger.params && rule.trigger.params.from;
+      var to = rule.trigger.params && rule.trigger.params.to;
+      if (!from || !to) return false;
+      return this._suitInSet(prevCard.suit, from) && this._suitInSet(card.suit, to);
+    }
+    if (rule.trigger.type === 'numeric_offset') {
+      if (!prevCard) return false;
+      if (card.rank === 'joker' || prevCard.rank === 'joker') return false;
+      var p = rule.trigger.params || {};
+      var offset = p.offset || 1;
+      var direction = p.direction || 'positive';
+      var diff = (RANK_NUM[card.rank] || 0) - (RANK_NUM[prevCard.rank] || 0);
+      var matchesOffset = false;
+      if (direction === 'positive' || direction === 'both') {
+        if (diff === offset) matchesOffset = true;
+      }
+      if (direction === 'negative' || direction === 'both') {
+        if (diff === -offset) matchesOffset = true;
+      }
+      if (!matchesOffset) return false;
+      var sc = p.suitConstraint || 'any';
+      if (sc === 'same_suit') return card.suit === prevCard.suit;
+      if (sc === 'same_color') {
+        var cardRed = card.suit === 'hearts' || card.suit === 'diamonds';
+        var prevRed = prevCard.suit === 'hearts' || prevCard.suit === 'diamonds';
+        return cardRed === prevRed;
+      }
+      if (sc === 'diff_color') {
+        var cardRed2 = card.suit === 'hearts' || card.suit === 'diamonds';
+        var prevRed2 = prevCard.suit === 'hearts' || prevCard.suit === 'diamonds';
+        return cardRed2 !== prevRed2;
+      }
+      if (sc === 'specific') {
+        var suits = p.specificSuits || [];
+        return suits.indexOf(card.suit) !== -1;
+      }
+      return true;
+    }
+    return this._cardMatchesRule(rule, card);
+  }
+
   observePlay(playerId, card) {
     var rules = this.game.rules;
+    var pile = this.game.discardPile;
+    var prevCard = pile.length >= 2 ? pile[pile.length - 2] : null;
     for (var i = 0; i < rules.length; i++) {
       var r = rules[i];
       if (r.type !== 'block') continue;
-      if (!r.conditions && !r.orConditions) continue;
-      if (!r.orConditions && (!r.conditions || r.conditions.length === 0)) continue;
-      if (!this._cardMatchesRule(r, card)) continue;
+      if (!this._triggerMatches(r, card, prevCard)) continue;
       for (var k = 0; k < this.game.players.length; k++) {
         var p = this.game.players[k];
         if (!p.isBot) continue;
@@ -472,7 +538,7 @@ class BotController {
       if (!self.game.lastWinner || !self.isBotPlayer(self.game.lastWinner.id)) return;
       if (self.game.round !== round) return;
       var rules = self.botPlayers.size;
-      var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'must_say', 'knock'];
+      var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'knock'];
       var botSuits = ['any', 'spades', 'clubs', 'diamonds', 'hearts'];
       var botRanks = ['any', 'king', 'queen', 'jack', 'ace', '7'];
 
@@ -497,7 +563,6 @@ class BotController {
         reverse: { mapType: 'reverse_direction', targets: [], timing: true },
         double_turn: { mapType: 'play_again', targets: ['that', 'next'], timing: true },
         change_suit: { mapType: 'change_active_suit', targets: ['that', 'next'], timing: true, params: { suit: ['clubs','diamonds','hearts','spades'][Math.floor(Math.random()*4)] } },
-        must_say: { mapType: 'must_say_phrase', targets: ['that', 'next', 'prev', 'all'], timing: false, params: { phrase: ['please','thank you','knock knock','mao','oops'][Math.floor(Math.random()*5)] } },
         knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true, params: { count: Math.floor(Math.random() * self.game.players.length) + 1 } }
       };
 
@@ -623,13 +688,13 @@ class BotController {
     var mem = this.botMemory.get(botId);
     if (!mem) return;
     var stats = mem.stats;
+    var pile = this.game.discardPile;
+    var prevCard = pile.length >= 2 ? pile[pile.length - 2] : null;
 
     for (var i = 0; i < this.game.rules.length; i++) {
       var r = this.game.rules[i];
       if (r.type !== 'block') continue;
-      if (!r.conditions && !r.orConditions) continue;
-      if (!r.orConditions && (!r.conditions || r.conditions.length === 0)) continue;
-      if (!this._cardMatchesRule(r, card)) continue;
+      if (!this._triggerMatches(r, card, prevCard)) continue;
 
       if (Math.random() > stats.detectChance) continue;
 
