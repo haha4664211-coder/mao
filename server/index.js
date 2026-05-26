@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 const { Lobby } = require('./lobby');
 const { Game } = require('./game');
 const { BotController } = require('./bot');
@@ -19,18 +18,6 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 app.use('/cards', express.static(path.join(__dirname, '..', 'cards')));
 app.use('/ui', express.static(path.join(__dirname, '..', 'ui')));
 app.use(express.json());
-
-let OPENROUTER_KEY = '';
-try {
-  const cfgPath = path.join(__dirname, '..', 'config.json');
-  if (fs.existsSync(cfgPath)) {
-    const config = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'));
-    OPENROUTER_KEY = Buffer.from(config.openrouter_key, 'base64').toString('utf-8');
-    console.log('OpenRouter key loaded from config.json');
-  }
-} catch (e) {
-  console.log('Failed to load config.json:', e.message);
-}
 
 const lobbies = new Map();
 
@@ -409,57 +396,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     handleDisconnect(socket.id);
-  });
-
-  socket.on('submit_rule', async ({ description }) => {
-    const lobby = findLobbyByPlayer(socket.id);
-    if (!lobby || !lobby.game) return;
-    if (lobby.game.state !== 'round_end') return;
-    if (!lobby.game.lastWinner || lobby.game.lastWinner.id !== socket.id) {
-      socket.emit('error', { message: 'Only the winner can create a rule' });
-      return;
-    }
-    io.to(lobby.code).emit('rule_under_review');
-    if (!OPENROUTER_KEY) {
-      socket.emit('rule_evaluated', { valid: false, error: 'OpenRouter API key not set in config.json' });
-      return;
-    }
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:3000'
-        },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b:free',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a rules interpreter for the card game Mao. The winner of each round creates a new hidden rule that other players must follow. Players describe rules in plain English, and you need to determine if the rule is a valid, understandable game rule for Mao.\n\nRespond with JSON in this exact format:\n- If you understand the rule: {"valid": true, "summary": "short rule description", "interpretation": "how this rule works in game terms"}\n- If you don\'t understand: {"valid": false, "error": "sorry i don\'t understand that"}\n\nValid rules are things like: playing restrictions ("only spades"), verbal requirements ("must say please"), action effects ("reverse on hearts"), timing rules ("draw 2 if you hesitate"), etc.\n\nExamples:\nInput: "You can only play red cards"\nOutput: {"valid": true, "summary": "only red cards allowed", "interpretation": "Players may only play hearts or diamonds. Playing clubs or spades is not allowed."}\n\nInput: "You must say thank you after drawing a card"\nOutput: {"valid": true, "summary": "say thank you after drawing", "interpretation": "After drawing a card from the deck, the player must say thank you aloud before ending their actions."}\n\nInput: "Blue cards are banned"\nOutput: {"valid": false, "error": "sorry i don\'t understand that"}'
-            },
-            { role: 'user', content: description }
-          ]
-        })
-      });
-      const data = await response.json();
-      if (data.error) {
-        socket.emit('rule_evaluated', { valid: false, error: 'OpenRouter API error: ' + (data.error.message || JSON.stringify(data.error)) });
-        return;
-      }
-      const content = data.choices?.[0]?.message?.content || '';
-      let parsed;
-      try {
-        parsed = JSON.parse(content);
-      } catch (e) {
-        socket.emit('rule_evaluated', { valid: false, error: 'sorry i don\'t understand that' });
-        return;
-      }
-      socket.emit('rule_evaluated', parsed);
-    } catch (e) {
-      socket.emit('rule_evaluated', { valid: false, error: 'Failed to reach AI: ' + e.message });
-    }
   });
 
   socket.on('confirm_rule', ({ rule }) => {

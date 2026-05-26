@@ -199,67 +199,6 @@ socket.on('round_won', function(data) {
   showRuleForm(data);
 });
 
-socket.on('rule_under_review', function() {
-  showToast('Checking rule with AI...', 'info');
-});
-
-socket.on('rule_evaluated', function(result) {
-  var description = '';
-  var descEl = document.getElementById('rule-description');
-  if (descEl) description = descEl.value;
-
-  if (result.valid) {
-    punishmentBody.innerHTML =
-      '<div class="punish-info">' +
-      '<p style="color:var(--accent-green);font-size:18px;font-weight:700">RULE ACCEPTED!</p>' +
-      '<p class="punish-reason">"' + description + '"</p>' +
-      '<p><span class="punish-highlight">Summary:</span> ' + result.summary + '</p>' +
-      '<p><span class="punish-highlight">Interpretation:</span> ' + result.interpretation + '</p>' +
-      '</div>';
-    punishmentActions.innerHTML =
-      '<button class="btn btn-primary" id="btn-confirm-rule">CONFIRM RULE</button>';
-    document.getElementById('btn-confirm-rule').addEventListener('click', function() {
-      socket.emit('confirm_rule', {
-        rule: {
-          description: description,
-          summary: result.summary,
-          interpretation: result.interpretation,
-          createdBy: myNickname,
-          round: gameState ? gameState.round : 0
-        }
-      });
-    });
-  } else {
-    var errorMsg = result.error || 'sorry i don\'t understand that';
-    punishmentBody.innerHTML =
-      '<div class="punish-info">' +
-      '<p style="color:var(--accent-red);font-size:16px;font-weight:700">RULE REJECTED</p>' +
-      '<p class="punish-reason">"' + description + '"</p>' +
-      '<p style="color:var(--text-secondary)">' + errorMsg + '</p>' +
-      '<p style="margin-top:12px">Try describing your rule differently.</p>' +
-      '</div>';
-    punishmentActions.innerHTML =
-      '<button class="btn btn-primary" id="btn-try-again">TRY AGAIN</button>' +
-      '<button class="btn btn-danger" id="btn-skip-rule">SKIP</button>';
-    document.getElementById('btn-try-again').addEventListener('click', function() {
-      if (gameState) {
-        showRuleForm({ winnerId: myId, winnerNickname: myNickname, round: gameState.round, rules: gameState.rules || [] });
-      }
-    });
-    document.getElementById('btn-skip-rule').addEventListener('click', function() {
-      socket.emit('confirm_rule', {
-        rule: {
-          description: 'No rule added',
-          summary: 'Skipped',
-          interpretation: 'Winner chose not to add a rule this round.',
-          createdBy: myNickname,
-          round: gameState ? gameState.round : 0
-        }
-      });
-    });
-  }
-});
-
 socket.on('rule_created', function(data) {
   closePunishmentOverlay();
   showToast('New rule added!', 'success');
@@ -562,12 +501,23 @@ function renderTriggerRow(index) {
   div.className = 'rc-trigger-row-item';
   div.dataset.index = index;
 
+  var suitLabel = document.createElement('span');
+  suitLabel.className = 'rc-inline-label';
+  suitLabel.textContent = 'Suit';
+  div.appendChild(suitLabel);
+
   var suitSel = document.createElement('select');
   suitSel.className = 'rc-select rc-trigger-suit';
   populateSelect(suitSel, SUIT_OPTIONS, row.suit);
   suitSel.addEventListener('change', function(idx, sel) {
     return function() { rcState.triggerRows[idx].suit = sel.value; updateRulePreview(); };
   }(index, suitSel));
+  div.appendChild(suitSel);
+
+  var rankLabel = document.createElement('span');
+  rankLabel.className = 'rc-inline-label';
+  rankLabel.textContent = 'Card';
+  div.appendChild(rankLabel);
 
   var rankSel = document.createElement('select');
   rankSel.className = 'rc-select rc-trigger-rank';
@@ -575,8 +525,6 @@ function renderTriggerRow(index) {
   rankSel.addEventListener('change', function(idx, sel) {
     return function() { rcState.triggerRows[idx].rank = sel.value; updateRulePreview(); };
   }(index, rankSel));
-
-  div.appendChild(suitSel);
   div.appendChild(rankSel);
 
   if (rcState.triggerRows.length > 1) {
