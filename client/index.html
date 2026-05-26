@@ -29,6 +29,7 @@
         <button id="btn-join-submit" class="btn btn-primary">JOIN</button>
       </div>
       <div id="menu-error" class="error-message hidden"></div>
+      <button id="btn-menu-settings" class="btn-settings-icon" title="Settings">⚙</button>
     </div>
   </div>
 </div>
@@ -68,6 +69,7 @@
     </div>
     <div class="game-controls">
       <button id="btn-fullscreen" class="btn btn-icon" title="Fullscreen">⛶</button>
+      <button id="btn-game-settings" class="btn btn-icon" title="Settings">⚙</button>
       <button id="btn-leave-game" class="btn btn-small btn-danger">LEAVE</button>
     </div>
   </div>
@@ -164,9 +166,49 @@
   </div>
 </div>
 
+<div id="settings-overlay" class="overlay hidden">
+  <div class="settings-content">
+    <h3>SETTINGS</h3>
+    <div class="settings-body">
+      <div class="settings-section">
+        <div class="settings-header">
+          <span>Music</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-music-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-slider-row">
+          <span class="settings-slider-label">Volume</span>
+          <input type="range" id="settings-music-volume" min="0" max="100" value="50">
+          <span class="settings-slider-val" id="settings-music-val">50%</span>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-header">
+          <span>Sound Effects</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-sfx-toggle" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-slider-row">
+          <span class="settings-slider-label">Volume</span>
+          <input type="range" id="settings-sfx-volume" min="0" max="100" value="70">
+          <span class="settings-slider-val" id="settings-sfx-val">70%</span>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-actions">
+      <button id="btn-settings-close" class="btn btn-primary">CLOSE</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="js/audio.js"></script>
 <script src="js/particles.js"></script>
 <script src="js/socket.js"></script>
 <script src="js/menu.js"></script>

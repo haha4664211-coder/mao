@@ -39,65 +39,7 @@ const punishmentTitle = document.getElementById('punishment-title');
 const punishmentBody = document.getElementById('punishment-body');
 const punishmentActions = document.getElementById('punishment-actions');
 
-class SoundManager {
-  constructor() {
-    this.ctx = null;
-  }
-  init() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-  }
-  play(type) {
-    try {
-      this.init();
-      var osc = this.ctx.createOscillator();
-      var gain = this.ctx.createGain();
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      var t = this.ctx.currentTime;
-      switch (type) {
-        case 'cardPlay':
-          osc.frequency.setValueAtTime(800, t);
-          osc.frequency.exponentialRampToValueAtTime(600, t + 0.1);
-          gain.gain.setValueAtTime(0.15, t);
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-          osc.start(t); osc.stop(t + 0.1);
-          break;
-        case 'cardDraw':
-          osc.frequency.setValueAtTime(300, t);
-          osc.frequency.exponentialRampToValueAtTime(600, t + 0.15);
-          gain.gain.setValueAtTime(0.12, t);
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-          osc.start(t); osc.stop(t + 0.15);
-          break;
-        case 'turn':
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(880, t);
-          gain.gain.setValueAtTime(0.1, t);
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-          osc.start(t); osc.stop(t + 0.2);
-          break;
-        case 'punish':
-          osc.frequency.setValueAtTime(440, t);
-          osc.frequency.setValueAtTime(660, t + 0.15);
-          osc.frequency.setValueAtTime(880, t + 0.3);
-          gain.gain.setValueAtTime(0.15, t);
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-          osc.start(t); osc.stop(t + 0.5);
-          break;
-        case 'click':
-          osc.frequency.setValueAtTime(1000, t);
-          gain.gain.setValueAtTime(0.08, t);
-          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
-          osc.start(t); osc.stop(t + 0.05);
-          break;
-      }
-    } catch (e) {}
-  }
-}
-
-var sound = new SoundManager();
+var sound = { play: function(type) { AudioManager.playSfx(type); } };
 
 socket.on('game_started', function(state) {
   showScreen('game');
