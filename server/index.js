@@ -215,7 +215,8 @@ io.on('connection', (socket) => {
       io.to(lobby.code).emit('round_won', {
         winnerId: result.winner.id,
         winnerNickname: result.winner.nickname,
-        round: game.round
+        round: game.round,
+        playerCount: game.players.length
       });
       if (lobby.botController) lobby.botController.onRoundEnd();
     } else {
@@ -303,20 +304,6 @@ io.on('connection', (socket) => {
       punisherId: result.victimId
     });
     broadcastGameState(game);
-  });
-
-  socket.on('end_turn', () => {
-    const lobby = findLobbyByPlayer(socket.id);
-    if (!lobby || !lobby.game) return;
-    const result = lobby.game.endTurn(socket.id);
-    if (!result.success) {
-      socket.emit('error', { message: result.error });
-      return;
-    }
-    const game = lobby.game;
-    broadcastGameState(game);
-    io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
-    if (lobby.botController) scheduleBotTurnIfNeeded(lobby);
   });
 
   socket.on('submit_punishment', ({ targetId, reason, amount }) => {

@@ -25,7 +25,6 @@ const discardPileEl = document.getElementById('discard-pile');
 const drawPile = document.getElementById('draw-pile');
 const deckCountEl = document.getElementById('deck-count');
 const btnDraw = document.getElementById('btn-draw');
-const btnEndTurn = document.getElementById('btn-end-turn');
 const btnBadCard = document.getElementById('btn-bad-card');
 const btnFullscreen = document.getElementById('btn-fullscreen');
 const btnLeaveGame = document.getElementById('btn-leave-game');
@@ -235,7 +234,7 @@ var SIMPLE_ACTIONS = {
   double_turn: { name: 'Double turn', desc: '{target} takes double turn {timing}', targets: ['that', 'next'], timing: true, mapType: 'play_again' },
   change_suit: { name: 'Change suit to...', desc: '{target} must change suit to {suit} {timing}', targets: ['that', 'next'], timing: true, mapType: 'change_active_suit', params: [{ name: 'suit', label: 'Suit', type: 'select', options: ['clubs','diamonds','hearts','spades'] }] },
   must_say: { name: 'Must say...', desc: '{target} must say "{phrase}"', targets: ['that', 'next', 'prev', 'all'], timing: false, mapType: 'must_say_phrase', params: [{ name: 'phrase', label: 'Phrase', type: 'string' }] },
-  knock: { name: 'Knock on table', desc: '{target} knocks on the table {timing}', targets: ['that', 'next', 'prev'], timing: true, mapType: 'knock_on_table' }
+  knock: { name: 'Knock on table', desc: '{target} knocks {count} times {timing}', targets: ['that', 'next', 'prev'], timing: true, mapType: 'knock_on_table', params: [{ name: 'count', label: 'Times', type: 'number', min: 1 }] }
 };
 
 var SIMPLE_ACTION_KEYS = Object.keys(SIMPLE_ACTIONS);
@@ -300,6 +299,17 @@ function renderActionConfig() {
           return function() { rcState.actionParams[paramName] = s.value; updateRulePreview(); };
         }(p.name, pSel));
         paramRow.appendChild(pSel);
+      } else if (p.type === 'number') {
+        var pNum = document.createElement('input');
+        pNum.type = 'number';
+        pNum.className = 'rc-input rc-config-input rc-config-number';
+        pNum.min = p.min || 1;
+        pNum.max = rcState.playerCount || 10;
+        pNum.value = rcState.actionParams[p.name] || '1';
+        pNum.addEventListener('input', function(paramName, inp) {
+          return function() { rcState.actionParams[paramName] = inp.value; updateRulePreview(); };
+        }(p.name, pNum));
+        paramRow.appendChild(pNum);
       } else if (p.type === 'string') {
         var pInp = document.createElement('input');
         pInp.type = 'text';
@@ -436,7 +446,8 @@ function buildRuleForSubmit() {
       target: rcState.target,
       timing: rcState.timing,
       suit: rcState.actionParams.suit || null,
-      phrase: rcState.actionParams.phrase || null
+      phrase: rcState.actionParams.phrase || null,
+      count: rcState.actionParams.count ? parseInt(rcState.actionParams.count, 10) : null
     }
   };
   return {
@@ -583,7 +594,8 @@ function showRuleCreator(data) {
     target: 'next',
     timing: 'now',
     actionParams: {},
-    showActionAdv: false
+    showActionAdv: false,
+    playerCount: data.playerCount || 4
   };
   rcRuleName.value = '';
   populateSelect(rcTriggerType, [{ value: 'card_played', label: 'A card is played' }], 'card_played');
@@ -681,7 +693,6 @@ function renderGame() {
   renderOtherPlayers();
   renderHand();
   renderDiscardPile();
-  updateActionButtons();
 }
 
 function animateCardPlay(card, playerId) {
@@ -930,11 +941,6 @@ function renderDiscardPile() {
   }
 }
 
-function updateActionButtons() {
-  updateCooldownUI();
-  btnEndTurn.disabled = false;
-}
-
 function playCard(index) {
   if (isAnimating) {
     showToast('Wait for the animation to finish', 'info');
@@ -982,14 +988,6 @@ btnDraw.addEventListener('click', function() {
 btnBadCard.addEventListener('click', function() {
   socket.emit('bad_card_punish');
   sound.play('punish');
-});
-
-btnEndTurn.addEventListener('click', function() {
-  socket.emit('end_turn');
-  selectedCardIndex = -1;
-  sound.play('click');
-  lastPlayedTime = 0;
-  updateCooldownUI();
 });
 
 drawPile.addEventListener('click', function() {

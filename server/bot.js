@@ -498,7 +498,7 @@ class BotController {
         double_turn: { mapType: 'play_again', targets: ['that', 'next'], timing: true },
         change_suit: { mapType: 'change_active_suit', targets: ['that', 'next'], timing: true, params: { suit: ['clubs','diamonds','hearts','spades'][Math.floor(Math.random()*4)] } },
         must_say: { mapType: 'must_say_phrase', targets: ['that', 'next', 'prev', 'all'], timing: false, params: { phrase: ['please','thank you','knock knock','mao','oops'][Math.floor(Math.random()*5)] } },
-        knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true }
+        knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true, params: { count: Math.floor(Math.random() * self.game.players.length) + 1 } }
       };
 
       var sa = simpleActions[action];

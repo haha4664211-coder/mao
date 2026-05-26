@@ -1688,6 +1688,12 @@ html, body {
   border-color: var(--accent-purple);
 }
 
+.rc-config-number {
+  width: 60px;
+  min-width: 60px;
+  text-align: center;
+}
+
 .rc-params-inline {
   display: flex;
   align-items: center;

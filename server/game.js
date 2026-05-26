@@ -94,7 +94,9 @@ const ACTION_DEFS = [
     { name: 'suit', label: 'Suit', type: 'select', options: ['clubs', 'diamonds', 'hearts', 'spades'] }
   ]},
   { type: 'play_again', name: 'Take another turn', desc: 'take another turn', params: [] },
-  { type: 'knock_on_table', name: 'Knock on table', desc: 'knock on the table', params: [] },
+  { type: 'knock_on_table', name: 'Knock on table', desc: 'knock on the table {count} times', params: [
+    { name: 'count', label: 'Times', type: 'number', min: 1, max: 10 }
+  ] },
 ];
 
 class Game {
@@ -260,6 +262,13 @@ class Game {
     for (const action of rule.actions) {
       const def = ACTION_DEFS.find(a => a.type === action.type);
       if (!def) return { valid: false, error: `Invalid action type: ${action.type}` };
+
+      if (action.type === 'knock_on_table') {
+        const count = action.params?.count;
+        if (typeof count !== 'number' || count < 1 || count > this.players.length) {
+          return { valid: false, error: `Knock count must be between 1 and ${this.players.length}` };
+        }
+      }
     }
 
     if (rule.conditions) {
