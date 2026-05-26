@@ -237,7 +237,10 @@ io.on('connection', (socket) => {
     }
     const game = lobby.game;
     socket.emit('card_drawn', { card: result.card });
+    game.endTurn(socket.id);
     broadcastGameState(game);
+    io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
+    if (lobby.botController) scheduleBotTurnIfNeeded(lobby);
   });
 
   socket.on('punish_player', ({ targetId }) => {

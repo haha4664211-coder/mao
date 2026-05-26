@@ -15,7 +15,8 @@ let selectedCardIndex = -1;
 let myHand = [];
 
 let lastPlayedTime = 0;
-const CARD_COOLDOWN_MS = 3000;
+const CARD_COOLDOWN_MS = 500;
+let isAnimating = false;
 
 const gameRoomCode = document.getElementById('game-room-code');
 const otherPlayersEl = document.getElementById('other-players');
@@ -999,6 +1000,8 @@ function animateCardPlay(card, playerId) {
 
   setTimeout(function() {
     if (animEl.parentNode) animEl.parentNode.removeChild(animEl);
+    isAnimating = false;
+    updateCooldownUI();
   }, 3000);
 }
 
@@ -1180,6 +1183,10 @@ function updateActionButtons() {
 }
 
 function playCard(index) {
+  if (isAnimating) {
+    showToast('Wait for the animation to finish', 'info');
+    return;
+  }
   var now = Date.now();
   if (now - lastPlayedTime < CARD_COOLDOWN_MS) {
     showToast('Wait ' + Math.ceil((CARD_COOLDOWN_MS - (now - lastPlayedTime)) / 1000) + 's before playing again', 'info');
@@ -1188,11 +1195,12 @@ function playCard(index) {
   socket.emit('play_card', { cardIndex: index });
   selectedCardIndex = -1;
   lastPlayedTime = now;
+  isAnimating = true;
   updateCooldownUI();
 }
 
 function canAct() {
-  return Date.now() - lastPlayedTime >= CARD_COOLDOWN_MS;
+  return Date.now() - lastPlayedTime >= CARD_COOLDOWN_MS && !isAnimating;
 }
 
 function updateCooldownUI() {

@@ -172,7 +172,7 @@ class Game {
 
     const now = Date.now();
     const last = this.lastPlayedAt[playerId] || 0;
-    if (now - last < 3000) return { success: false, error: 'Wait before playing again' };
+    if (now - last < 500) return { success: false, error: 'Wait before playing again' };
     this.lastPlayedAt[playerId] = now;
 
     const card = player.hand.splice(cardIndex, 1)[0];
@@ -193,10 +193,6 @@ class Game {
     const player = this.getPlayer(playerId);
     if (!player) return { success: false, error: 'Player not found' };
     if (this.deck.length === 0) return { success: false, error: 'Deck is empty' };
-
-    const now = Date.now();
-    const last = this.lastPlayedAt[playerId] || 0;
-    if (now - last < 3000) return { success: false, error: 'Wait before drawing' };
 
     const card = this.deck.pop();
     player.hand.push(card);

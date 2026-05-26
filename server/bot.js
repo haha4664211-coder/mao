@@ -134,11 +134,16 @@ class BotController {
     if (!delay) delay = 800 + Math.random() * 1200;
     var self = this;
     setTimeout(function() {
-      if (self.game.state !== 'playing') return;
-      var mem = self.botMemory.get(playerId);
-      if (!mem) return;
-      if (Date.now() < mem.cooldownUntil) return;
-      self.processBotTurn(playerId);
+      try {
+        if (self.game.state !== 'playing') return;
+        var mem = self.botMemory.get(playerId);
+        if (!mem) return;
+        if (Date.now() < mem.cooldownUntil) return;
+        self.processBotTurn(playerId);
+      } catch (e) {
+        console.error('[Bot] Error in turn:', e);
+        self.botEndTurn(playerId);
+      }
     }, delay);
   }
 
