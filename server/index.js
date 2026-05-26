@@ -90,7 +90,7 @@ io.on('connection', (socket) => {
     io.to(lobby.code).emit('lobby_update', lobby.getPublicState());
   });
 
-  socket.on('start_game', () => {
+  socket.on('start_game', ({ deckCount } = {}) => {
     const lobby = findLobbyByPlayer(socket.id);
     if (!lobby) return;
     if (lobby.hostId !== socket.id) {
@@ -102,7 +102,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const game = new Game(lobby);
+    const game = new Game(lobby, { deckCount: deckCount || 2 });
     lobby.game = game;
     lobby.botController = new BotController(game, io, lobby.code);
     io.to(lobby.code).emit('game_started', game.getPublicState());

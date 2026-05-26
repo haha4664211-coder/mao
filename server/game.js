@@ -98,7 +98,9 @@ const ACTION_DEFS = [
 ];
 
 class Game {
-  constructor(lobby) {
+  constructor(lobby, options) {
+    options = options || {};
+    this.deckCount = options.deckCount || 2;
     this.lobby = lobby;
     this.players = lobby.players.map(p => ({
       id: p.id,
@@ -127,13 +129,15 @@ class Game {
 
   initDeck() {
     this.deck = [];
-    for (const suit of SUITS) {
-      for (const rank of RANKS) {
-        this.deck.push({ rank, suit });
+    for (let d = 0; d < this.deckCount; d++) {
+      for (const suit of SUITS) {
+        for (const rank of RANKS) {
+          this.deck.push({ rank, suit });
+        }
       }
+      this.deck.push({ rank: 'joker', color: 'black' });
+      this.deck.push({ rank: 'joker', color: 'red' });
     }
-    this.deck.push({ rank: 'joker', color: 'black' });
-    this.deck.push({ rank: 'joker', color: 'red' });
     this.shuffle();
   }
 
@@ -192,7 +196,14 @@ class Game {
   drawCard(playerId) {
     const player = this.getPlayer(playerId);
     if (!player) return { success: false, error: 'Player not found' };
-    if (this.deck.length === 0) return { success: false, error: 'Deck is empty' };
+
+    if (this.deck.length === 0) {
+      if (this.discardPile.length <= 1) return { success: false, error: 'Deck is empty' };
+      const topCard = this.discardPile.pop();
+      this.deck = this.discardPile;
+      this.discardPile = [topCard];
+      this.shuffle();
+    }
 
     const card = this.deck.pop();
     player.hand.push(card);

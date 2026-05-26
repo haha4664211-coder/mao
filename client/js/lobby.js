@@ -5,6 +5,7 @@ const btnStartGame = document.getElementById('btn-start-game');
 const btnLeaveLobby = document.getElementById('btn-leave-lobby');
 const btnCopyCode = document.getElementById('btn-copy-code');
 const btnAddBot = document.getElementById('btn-add-bot');
+const deckSelect = document.getElementById('deck-select');
 
 let isReady = false;
 let botConfigPopup = null;
@@ -51,6 +52,7 @@ function renderLobby(state) {
   btnReady.classList.toggle('hidden', isHost);
   btnStartGame.classList.toggle('hidden', !isHost);
   btnAddBot.classList.toggle('hidden', !isHost);
+  deckSelect.classList.toggle('hidden', !isHost);
   btnStartGame.disabled = !state.players.every(p => p.isReady || p.isHost);
   btnReady.textContent = isReady ? 'UNREADY' : 'READY';
 }
@@ -109,7 +111,9 @@ btnReady.addEventListener('click', () => {
 });
 
 btnStartGame.addEventListener('click', () => {
-  socket.emit('start_game');
+  var selected = document.querySelector('input[name="deckCount"]:checked');
+  var deckCount = selected ? parseInt(selected.value) : 2;
+  socket.emit('start_game', { deckCount: deckCount });
 });
 
 btnLeaveLobby.addEventListener('click', () => {
