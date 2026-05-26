@@ -943,6 +943,21 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.discard-pile .table-card.prev-card {
+  position: absolute;
+  top: 4px;
+  left: -4px;
+  z-index: 1;
+  opacity: 0.85;
+  filter: brightness(0.85);
+}
+
+.discard-pile .table-card:not(.prev-card) {
+  position: relative;
+  z-index: 2;
 }
 
 .discard-placeholder {

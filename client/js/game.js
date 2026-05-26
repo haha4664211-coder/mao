@@ -890,17 +890,20 @@ function renderHand() {
 
 function renderDiscardPile() {
   discardPileEl.innerHTML = '';
-  var topCard = null;
   if (gameState.discardPile && gameState.discardPile.length > 0) {
-    topCard = gameState.discardPile[gameState.discardPile.length - 1];
+    for (var i = Math.max(0, gameState.discardPile.length - 2); i < gameState.discardPile.length; i++) {
+      var card = gameState.discardPile[i];
+      var div = document.createElement('div');
+      div.className = 'table-card' + (i < gameState.discardPile.length - 1 ? ' prev-card' : '');
+      div.style.cursor = 'default';
+      div.innerHTML = '<img src="' + getCardImage(card) + '" alt="' + getCardDisplayName(card) + '" draggable="false">';
+      discardPileEl.appendChild(div);
+    }
   } else if (gameState.discardTop) {
-    topCard = gameState.discardTop;
-  }
-  if (topCard) {
     var div = document.createElement('div');
     div.className = 'table-card';
     div.style.cursor = 'default';
-    div.innerHTML = '<img src="' + getCardImage(topCard) + '" alt="' + getCardDisplayName(topCard) + '" draggable="false">';
+    div.innerHTML = '<img src="' + getCardImage(gameState.discardTop) + '" alt="' + getCardDisplayName(gameState.discardTop) + '" draggable="false">';
     discardPileEl.appendChild(div);
   } else {
     discardPileEl.innerHTML = '<div class="discard-placeholder">PILE</div>';
