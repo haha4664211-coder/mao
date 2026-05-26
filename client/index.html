@@ -134,32 +134,32 @@
       </div>
 
       <div class="rc-section">
-        <label class="rc-label">When a <span id="rc-when-label">card</span> is played...</label>
-        <div class="rc-row rc-when-row">
-          <span class="rc-inline-label">Suit</span>
-          <select id="rc-when-suit" class="rc-select rc-when-select"></select>
-          <span class="rc-inline-label">Card</span>
-          <select id="rc-when-rank" class="rc-select rc-when-select"></select>
+        <label class="rc-label">Triggers when...</label>
+        <div class="rc-row rc-trigger-row">
+          <select id="rc-trigger-type" class="rc-select"></select>
+        </div>
+        <div id="rc-trigger-config" class="rc-trigger-config">
+          <div class="rc-row rc-when-row">
+            <span class="rc-inline-label">Suit</span>
+            <select id="rc-when-suit" class="rc-select rc-when-select"></select>
+            <span class="rc-inline-label">Card</span>
+            <select id="rc-when-rank" class="rc-select rc-when-select"></select>
+          </div>
         </div>
       </div>
 
       <div class="rc-section">
-        <label class="rc-label">
-          What happens
-          <button id="rc-adv-toggle" class="rc-adv-toggle" title="⚙ advanced">⚙</button>
-        </label>
+        <label class="rc-label">What happens</label>
         <div class="rc-row rc-action-row">
           <select id="rc-action-type" class="rc-select"></select>
-          <button id="rc-action-gear" class="rc-adv-toggle" title="⚙ Who & When">⚙</button>
+          <button id="rc-action-gear" class="rc-adv-toggle hidden" title="⚙ Who & When">⚙</button>
         </div>
         <div id="rc-action-config" class="rc-action-config"></div>
+        <div class="rc-adv-link-row">
+          <button id="rc-adv-cond-toggle" class="rc-adv-cond-toggle">+ Extra conditions</button>
+        </div>
         <div id="rc-adv-panel" class="rc-adv-panel hidden">
           <div class="rc-adv-inner">
-            <label class="rc-label rc-label-sm">Trigger type <span class="rc-optional">(advanced)</span></label>
-            <div class="rc-row rc-adv-trigger-row">
-              <select id="rc-adv-trigger-type" class="rc-select"></select>
-            </div>
-            <label class="rc-label rc-label-sm" style="margin-top:10px">Extra conditions <span class="rc-optional">(optional)</span></label>
             <div id="rc-adv-conditions-list"></div>
             <button id="rc-adv-add-condition" class="rc-add-btn hidden">+ Add condition</button>
           </div>

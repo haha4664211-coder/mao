@@ -401,20 +401,19 @@ var SIMPLE_ACTION_KEYS = Object.keys(SIMPLE_ACTIONS);
 
 var rcOverlay = document.getElementById('rule-creator-overlay');
 var rcRuleName = document.getElementById('rc-rule-name');
+var rcTriggerType = document.getElementById('rc-trigger-type');
 var rcWhenSuit = document.getElementById('rc-when-suit');
 var rcWhenRank = document.getElementById('rc-when-rank');
-var rcWhenLabel = document.getElementById('rc-when-label');
 var rcActionType = document.getElementById('rc-action-type');
 var rcActionGear = document.getElementById('rc-action-gear');
 var rcActionConfig = document.getElementById('rc-action-config');
 var rcPreview = document.getElementById('rc-preview');
 var rcBtnCreate = document.getElementById('rc-btn-create');
 var rcBtnSkip = document.getElementById('rc-btn-skip');
-var rcAdvToggle = document.getElementById('rc-adv-toggle');
 var rcAdvPanel = document.getElementById('rc-adv-panel');
-var rcAdvTriggerType = document.getElementById('rc-adv-trigger-type');
 var rcAdvConditionsList = document.getElementById('rc-adv-conditions-list');
 var rcAdvAddCondition = document.getElementById('rc-adv-add-condition');
+var rcAdvCondToggle = document.getElementById('rc-adv-cond-toggle');
 
 var rcState = null;
 
@@ -437,7 +436,9 @@ function renderActionConfig() {
   if (!cfg) return;
 
   var hasParams = cfg.params && cfg.params.length > 0;
-  var hasAdv = (cfg.targets && cfg.targets.length > 0) || cfg.timing;
+  var hasAdv = rcState.actionKey === 'skip_player' || rcState.actionKey === 'reverse';
+
+  rcActionGear.classList.toggle('hidden', !hasAdv);
 
   if (cfg.params) {
     for (var k = 0; k < cfg.params.length; k++) {
@@ -558,21 +559,20 @@ function getDesc(cfg) {
 function updateRulePreview() {
   if (!rcState) return;
   var cardDesc = '';
-  if (rcState.advOpen && (rcState.advTrigger.type !== 'after_card_played' || rcState.advConditions.length > 0)) {
-    var tDef = getDef(RC_TRIGGER_DEFS, rcState.advTrigger.type);
-    cardDesc = tDef ? fillDesc(tDef, rcState.advTrigger.params) : '?';
-    if (rcState.advConditions.length > 0) {
-      var condTexts = [];
-      for (var i = 0; i < rcState.advConditions.length; i++) {
-        var cDef = getDef(RC_CONDITION_DEFS, rcState.advConditions[i].type);
-        if (cDef) condTexts.push(fillDesc(cDef, rcState.advConditions[i].params));
-      }
-      if (condTexts.length > 0) cardDesc += ' if ' + condTexts.join(' and ');
-    }
-  } else {
+  if (rcState.triggerKey === 'card_played') {
     var suitLabel = rcState.suit === 'any' ? '' : rcState.suit;
     var rankLabel = rcState.rank === 'any' ? '' : rcState.rank;
     cardDesc = suitLabel || rankLabel ? (suitLabel + ' ' + rankLabel).trim() : 'a card';
+  } else {
+    cardDesc = '?';
+  }
+  if (rcState.advConditions.length > 0) {
+    var condTexts = [];
+    for (var i = 0; i < rcState.advConditions.length; i++) {
+      var cDef = getDef(RC_CONDITION_DEFS, rcState.advConditions[i].type);
+      if (cDef) condTexts.push(fillDesc(cDef, rcState.advConditions[i].params));
+    }
+    if (condTexts.length > 0) cardDesc += ' if ' + condTexts.join(' and ');
   }
   var cfg = SIMPLE_ACTIONS[rcState.actionKey];
   var actionDesc = cfg ? getDesc(cfg) : '?';
@@ -581,9 +581,7 @@ function updateRulePreview() {
 
 function buildRuleForSubmit() {
   var conditions = [];
-  if (rcState.advOpen && (rcState.advTrigger.type !== 'after_card_played' || rcState.advConditions.length > 0)) {
-    conditions = rcState.advConditions.slice();
-  } else {
+  if (rcState.triggerKey === 'card_played') {
     if (rcState.suit !== 'any') {
       if (rcState.suit === 'red suits') {
         conditions.push({ type: 'red_black', params: { color: 'red' } });
@@ -597,8 +595,9 @@ function buildRuleForSubmit() {
       conditions.push({ type: 'specific_rank', params: { rank: rcState.rank } });
     }
   }
-  var triggerType = rcState.advOpen && rcState.advTrigger.type !== 'after_card_played' ? rcState.advTrigger.type : 'after_card_played';
-  var triggerParams = rcState.advOpen && rcState.advTrigger.type !== 'after_card_played' ? rcState.advTrigger.params : {};
+  for (var i = 0; i < rcState.advConditions.length; i++) {
+    conditions.push(rcState.advConditions[i]);
+  }
   var cfg = SIMPLE_ACTIONS[rcState.actionKey];
   var action = {
     type: cfg.mapType,
@@ -611,7 +610,7 @@ function buildRuleForSubmit() {
   };
   return {
     name: rcRuleName.value.trim(),
-    trigger: { type: triggerType, params: triggerParams },
+    trigger: { type: 'after_card_played', params: {} },
     conditions: conditions,
     actions: [action]
   };
@@ -736,7 +735,6 @@ function renderAdvConditionBlock(idx) {
 
 function rebuildAdvConditions() {
   rcAdvConditionsList.innerHTML = '';
-  if (!rcState.advOpen) return;
   for (var i = 0; i < rcState.advConditions.length; i++) {
     renderAdvConditionBlock(i);
   }
@@ -747,14 +745,9 @@ function initRuleCreator() {
   populateSelect(rcWhenSuit, SUIT_OPTIONS, 'any');
   populateSelect(rcWhenRank, RANK_OPTIONS, 'any');
   populateSelect(rcActionType, SIMPLE_ACTION_KEYS.map(function(k) { return { value: k, label: SIMPLE_ACTIONS[k].name }; }), 'skip_player');
-  populateSelect(rcAdvTriggerType, RC_TRIGGER_DEFS, 'after_card_played');
 
   rcWhenSuit.addEventListener('change', function() {
     rcState.suit = rcWhenSuit.value;
-    var parts = [];
-    if (rcState.suit !== 'any') parts.push(rcState.suit);
-    if (rcState.rank !== 'any') parts.push(rcState.rank);
-    rcWhenLabel.textContent = parts.length > 0 ? parts.join(' ') : 'card';
     updateRulePreview();
   });
 
@@ -793,23 +786,18 @@ function initRuleCreator() {
     if (rcState.showActionAdv) rcActionConfig.classList.remove('hidden');
   });
 
-  rcAdvToggle.addEventListener('click', function() {
-    rcState.advOpen = !rcState.advOpen;
-    rcAdvPanel.classList.toggle('hidden', !rcState.advOpen);
-    rcAdvToggle.classList.toggle('rc-adv-toggle--active', rcState.advOpen);
-    if (rcState.advOpen) {
-      rcAdvTriggerType.value = rcState.advTrigger.type;
-      rebuildAdvConditions();
-    }
+  rcTriggerType.addEventListener('change', function() {
+    rcState.triggerKey = rcTriggerType.value;
+    var config = document.getElementById('rc-trigger-config');
+    if (config) config.style.display = rcState.triggerKey === 'card_played' ? '' : 'none';
     updateRulePreview();
   });
 
-  rcAdvTriggerType.addEventListener('change', function() {
-    var type = rcAdvTriggerType.value;
-    var def = getDef(RC_TRIGGER_DEFS, type);
-    if (def) {
-      rcState.advTrigger = { type: type, params: getDefaultParams(def) };
-      updateRulePreview();
+  rcAdvCondToggle.addEventListener('click', function() {
+    rcAdvPanel.classList.toggle('hidden');
+    rcAdvCondToggle.textContent = rcAdvPanel.classList.contains('hidden') ? '+ Extra conditions' : '− Hide conditions';
+    if (!rcAdvPanel.classList.contains('hidden')) {
+      rebuildAdvConditions();
     }
   });
 
@@ -852,24 +840,22 @@ function showRuleCreator(data) {
   rcState = {
     suit: 'any',
     rank: 'any',
+    triggerKey: 'card_played',
     actionKey: 'skip_player',
     target: 'next',
     timing: 'now',
     actionParams: {},
     showActionAdv: false,
-    advOpen: false,
-    advTrigger: { type: 'after_card_played', params: {} },
     advConditions: []
   };
   rcRuleName.value = '';
+  populateSelect(rcTriggerType, [{ value: 'card_played', label: 'A card is played' }], 'card_played');
   rcWhenSuit.value = 'any';
   rcWhenRank.value = 'any';
-  rcWhenLabel.textContent = 'card';
   rcActionType.value = 'skip_player';
   rcActionGear.classList.remove('rc-adv-toggle--active');
-  rcAdvToggle.classList.remove('rc-adv-toggle--active');
+  rcActionGear.classList.add('hidden');
   rcAdvPanel.classList.add('hidden');
-  rcAdvTriggerType.value = 'after_card_played';
   rcAdvConditionsList.innerHTML = '';
   rcAdvAddCondition.classList.add('hidden');
   renderActionConfig();

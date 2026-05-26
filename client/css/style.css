@@ -1780,6 +1780,26 @@ html, body {
   color: var(--accent-gold);
 }
 
+.rc-adv-link-row {
+  margin-top: 6px;
+}
+
+.rc-adv-cond-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.rc-adv-cond-toggle:hover {
+  color: var(--text-primary);
+}
+
 .rc-adv-panel {
   margin-top: 10px;
 }
