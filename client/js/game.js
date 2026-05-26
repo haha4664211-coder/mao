@@ -250,6 +250,22 @@ var rcBtnCreate = document.getElementById('rc-btn-create');
 var rcBtnSkip = document.getElementById('rc-btn-skip');
 var rcTriggerRowsEl = document.getElementById('rc-trigger-rows');
 var rcAddTriggerRow = document.getElementById('rc-add-trigger-row');
+var rcSuitChange = document.getElementById('rc-suit-change');
+var rcSuitFrom = document.getElementById('rc-suit-from');
+var rcSuitTo = document.getElementById('rc-suit-to');
+var rcSuitWarning = document.getElementById('rc-suit-warning');
+
+var SUIT_NAMES = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
+
+var SUIT_SETS = {
+  any: ['spades', 'clubs', 'diamonds', 'hearts'],
+  black: ['spades', 'clubs'],
+  red: ['diamonds', 'hearts'],
+  spades: ['spades'],
+  clubs: ['clubs'],
+  diamonds: ['diamonds'],
+  hearts: ['hearts']
+};
 
 var rcState = null;
 
@@ -403,8 +419,31 @@ function getDesc(cfg) {
   return desc;
 }
 
+function validateSuitChange() {
+  var from = rcState.suitChangeFrom;
+  var to = rcState.suitChangeTo;
+  var fromSet = SUIT_SETS[from] || [];
+  var toSet = SUIT_SETS[to] || [];
+  var overlap = fromSet.some(function(s) { return toSet.indexOf(s) !== -1; });
+  if (overlap) {
+    rcSuitWarning.classList.remove('hidden');
+    rcBtnCreate.disabled = true;
+  } else {
+    rcSuitWarning.classList.add('hidden');
+    rcBtnCreate.disabled = false;
+  }
+}
+
 function updateRulePreview() {
   if (!rcState) return;
+  var cfg = SIMPLE_ACTIONS[rcState.actionKey];
+  var actionDesc = cfg ? getDesc(cfg) : '?';
+  if (rcState.triggerKey === 'suit_change') {
+    var fromLabel = rcState.suitChangeFrom.charAt(0).toUpperCase() + rcState.suitChangeFrom.slice(1);
+    var toLabel = rcState.suitChangeTo.charAt(0).toUpperCase() + rcState.suitChangeTo.slice(1);
+    rcPreview.textContent = 'When suit changes from ' + fromLabel + ' to ' + toLabel + ', ' + actionDesc + ' (or draw 1 card)';
+    return;
+  }
   var parts = [];
   for (var i = 0; i < rcState.triggerRows.length; i++) {
     var row = rcState.triggerRows[i];
@@ -415,8 +454,6 @@ function updateRulePreview() {
     parts.push(label);
   }
   var cardDesc = parts.join(' or ');
-  var cfg = SIMPLE_ACTIONS[rcState.actionKey];
-  var actionDesc = cfg ? getDesc(cfg) : '?';
   rcPreview.textContent = 'When ' + cardDesc + ' is played, ' + actionDesc + ' (or draw 1 card)';
 }
 
@@ -450,9 +487,17 @@ function buildRuleForSubmit() {
       count: rcState.actionParams.count ? parseInt(rcState.actionParams.count, 10) : null
     }
   };
+
+  var triggerType = rcState.triggerKey === 'suit_change' ? 'after_suit_change' : 'after_card_played';
+  var triggerParams = {};
+  if (rcState.triggerKey === 'suit_change') {
+    triggerParams.from = rcState.suitChangeFrom;
+    triggerParams.to = rcState.suitChangeTo;
+  }
+
   return {
     name: rcRuleName.value.trim(),
-    trigger: { type: 'after_card_played', params: {} },
+    trigger: { type: triggerType, params: triggerParams },
     conditions: [],
     orConditions: orConditions.length > 0 ? orConditions : undefined,
     actions: [action]
@@ -553,6 +598,29 @@ function initRuleCreator() {
 
   rcTriggerType.addEventListener('change', function() {
     rcState.triggerKey = rcTriggerType.value;
+    if (rcTriggerType.value === 'suit_change') {
+      rcTriggerRowsEl.classList.add('hidden');
+      rcAddTriggerRow.classList.add('hidden');
+      rcSuitChange.classList.remove('hidden');
+      validateSuitChange();
+    } else {
+      rcTriggerRowsEl.classList.remove('hidden');
+      rcAddTriggerRow.classList.remove('hidden');
+      rcSuitChange.classList.add('hidden');
+      rcBtnCreate.disabled = false;
+    }
+    updateRulePreview();
+  });
+
+  rcSuitFrom.addEventListener('change', function() {
+    rcState.suitChangeFrom = rcSuitFrom.value;
+    validateSuitChange();
+    updateRulePreview();
+  });
+
+  rcSuitTo.addEventListener('change', function() {
+    rcState.suitChangeTo = rcSuitTo.value;
+    validateSuitChange();
     updateRulePreview();
   });
 
@@ -594,16 +662,27 @@ function showRuleCreator(data) {
     target: 'next',
     timing: 'now',
     actionParams: {},
+    suitChangeFrom: 'any',
+    suitChangeTo: 'any',
     showActionAdv: false,
     playerCount: data.playerCount || 4
   };
   rcRuleName.value = '';
-  populateSelect(rcTriggerType, [{ value: 'card_played', label: 'A card is played' }], 'card_played');
+  populateSelect(rcTriggerType, [
+    { value: 'card_played', label: 'A card is played' },
+    { value: 'suit_change', label: 'Suit changes' }
+  ], 'card_played');
+  populateSelect(rcSuitFrom, SUIT_NAMES.map(function(s) { return { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }), 'any');
+  populateSelect(rcSuitTo, SUIT_NAMES.map(function(s) { return { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }), 'any');
   rcActionType.value = 'skip_player';
   rcActionGear.classList.remove('rc-adv-toggle--active');
   rcActionGear.classList.add('hidden');
   renderTriggerRows();
   renderActionConfig();
+  rcTriggerRowsEl.classList.remove('hidden');
+  rcAddTriggerRow.classList.remove('hidden');
+  rcSuitChange.classList.add('hidden');
+  rcSuitWarning.classList.add('hidden');
   rcBtnCreate.disabled = false;
   rcBtnCreate.textContent = 'CREATE RULE';
   updateRulePreview();

@@ -507,10 +507,32 @@ class BotController {
         for (var key in sa.params) actionObj.params[key] = sa.params[key];
       }
 
+      // 20% chance to create a suit-change rule instead
+      var useSuitChange = Math.random() < 0.2;
+      var trigger = { type: 'after_card_played', params: {} };
+      if (useSuitChange) {
+        var botSuitKeys = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
+        var botSuitSets = {
+          any: ['spades', 'clubs', 'diamonds', 'hearts'],
+          black: ['spades', 'clubs'],
+          red: ['diamonds', 'hearts'],
+          spades: ['spades'],
+          clubs: ['clubs'],
+          diamonds: ['diamonds'],
+          hearts: ['hearts']
+        };
+        var fromSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
+        var toSuit;
+        do {
+          toSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
+        } while (botSuitSets[fromSuit].some(function(s) { return botSuitSets[toSuit].indexOf(s) !== -1; }));
+        trigger = { type: 'after_suit_change', params: { from: fromSuit, to: toSuit } };
+      }
+
       var name = 'Bot Rule ' + (self.game.rules.length + 1);
       var rule = {
         name: name,
-        trigger: { type: 'after_card_played', params: {} },
+        trigger: trigger,
         conditions: conditions,
         actions: [actionObj],
         type: 'block',

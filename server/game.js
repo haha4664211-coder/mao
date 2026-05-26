@@ -1,6 +1,16 @@
 const SUITS = ['clubs', 'diamonds', 'hearts', 'spades'];
 const RANKS = ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
 
+const SUIT_SETS = {
+  any: new Set(['spades', 'clubs', 'diamonds', 'hearts']),
+  black: new Set(['spades', 'clubs']),
+  red: new Set(['diamonds', 'hearts']),
+  spades: new Set(['spades']),
+  clubs: new Set(['clubs']),
+  diamonds: new Set(['diamonds']),
+  hearts: new Set(['hearts'])
+};
+
 const TRIGGER_DEFS = [
   { type: 'after_card_played', name: 'A card is played', desc: 'a card is played', params: [] },
   { type: 'before_turn', name: 'A turn starts', desc: 'a turn begins', params: [] },
@@ -22,6 +32,10 @@ const TRIGGER_DEFS = [
   { type: 'after_saying_word', name: 'Someone says a specific word', desc: 'someone says "{word}"', params: [
     { name: 'word', label: 'Word or phrase', type: 'string' }
   ]},
+  { type: 'after_suit_change', name: 'Suit changes', desc: 'suit changes from {from} to {to}', params: [
+    { name: 'from', label: 'From', type: 'select', options: ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'] },
+    { name: 'to', label: 'To', type: 'select', options: ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'] }
+  ] },
 ];
 
 const CONDITION_DEFS = [
@@ -255,6 +269,15 @@ class Game {
 
     const triggerDef = TRIGGER_DEFS.find(t => t.type === rule.trigger?.type);
     if (!triggerDef) return { valid: false, error: 'Invalid trigger type' };
+
+    if (rule.trigger.type === 'after_suit_change') {
+      const from = rule.trigger.params?.from;
+      const to = rule.trigger.params?.to;
+      if (!from || !to) return { valid: false, error: 'Suit change must specify from and to' };
+      if (!SUIT_SETS[from] || !SUIT_SETS[to]) return { valid: false, error: 'Invalid suit value' };
+      const intersection = [...SUIT_SETS[from]].filter(s => SUIT_SETS[to].has(s));
+      if (intersection.length > 0) return { valid: false, error: 'From and to suits cannot overlap' };
+    }
 
     if (!rule.actions || rule.actions.length === 0) return { valid: false, error: 'At least one action is required' };
     if (rule.actions.length > 5) return { valid: false, error: 'Too many actions (max 5)' };

@@ -1768,6 +1768,41 @@ html, body {
   background: rgba(170, 102, 255, 0.08);
 }
 
+.rc-suit-change {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(100, 181, 246, 0.06);
+  border: 1px solid rgba(100, 181, 246, 0.2);
+}
+
+.rc-suit-change .rc-config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-suit-change .rc-config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.rc-suit-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-suit-warning {
+  color: var(--accent-red);
+  font-size: 12px;
+  margin-top: 6px;
+  text-align: center;
+}
+
 .rc-preview-section {
   margin-top: 4px;
 }
