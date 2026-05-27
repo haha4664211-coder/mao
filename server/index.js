@@ -219,6 +219,28 @@ io.on('connection', (socket) => {
         playerCount: game.players.length
       });
       if (lobby.botController) lobby.botController.onRoundEnd();
+    } else if (result.lastCard) {
+      // 5-second window where the player who emptied their hand can still be punished
+      // After 5s, check if the pending win is still active
+      var capturedCode = lobby.code;
+      var capturedGame = lobby.game;
+      setTimeout(function() {
+        var pw = capturedGame.checkPendingWin();
+        if (pw) {
+          io.to(capturedCode).emit('round_won', {
+            winnerId: pw.id,
+            winnerNickname: pw.nickname,
+            round: capturedGame.round,
+            playerCount: capturedGame.players.length
+          });
+          if (lobby && lobby.botController) lobby.botController.onRoundEnd();
+        }
+        // If pw is null, the win was cancelled (player was punished), game continues
+      }, 5000);
+      io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
+      if (lobby.botController) {
+        scheduleBotTurnIfNeeded(lobby);
+      }
     } else {
       io.to(lobby.code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
       if (lobby.botController) {

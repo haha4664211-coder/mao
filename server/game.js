@@ -36,6 +36,9 @@ const TRIGGER_DEFS = [
     { name: 'from', label: 'From', type: 'select', options: ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'] },
     { name: 'to', label: 'To', type: 'select', options: ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'] }
   ] },
+  { type: 'after_same_card', name: 'Same card in a row', desc: 'the same {match} is played twice in a row', params: [
+    { name: 'match', label: 'Match type', type: 'select', options: ['exact_card', 'same_rank'] }
+  ] },
   { type: 'numeric_offset', name: 'Numeric offset play', desc: 'offset play ±{offset} ({suitConstraint})', params: [
     { name: 'offset', label: 'Offset', type: 'number', min: 1, max: 13 },
     { name: 'direction', label: 'Direction', type: 'select', options: ['positive', 'negative', 'both'] },
@@ -206,14 +209,35 @@ class Game {
     this.lastPlayedById = player.id;
 
     let winner = null;
+    let lastCard = false;
     if (player.hand.length === 0) {
-      winner = { id: player.id, nickname: player.nickname };
-      this.lastWinner = player;
-      this.state = 'round_end';
+      // Don't immediately end the round — give a 5-second window for punishment
+      this.pendingWin = {
+        playerId: player.id,
+        nickname: player.nickname,
+        deadline: Date.now() + 5000
+      };
+      lastCard = true;
     }
 
     this.advanceTurn();
-    return { success: true, card, winner };
+    return { success: true, card, winner, lastCard };
+  }
+
+  checkPendingWin() {
+    if (!this.pendingWin) return null;
+    if (Date.now() < this.pendingWin.deadline) return null;
+    const player = this.getPlayer(this.pendingWin.playerId);
+    if (!player) { this.pendingWin = null; return null; }
+    this.lastWinner = player;
+    this.state = 'round_end';
+    const winner = { id: player.id, nickname: player.nickname };
+    this.pendingWin = null;
+    return winner;
+  }
+
+  cancelPendingWin() {
+    this.pendingWin = null;
   }
 
   drawCard(playerId) {
@@ -295,6 +319,11 @@ class Game {
           if (!SUITS.includes(s)) return { valid: false, error: 'Invalid specific suit' };
         }
       }
+    }
+
+    if (rule.trigger.type === 'after_same_card') {
+      const p = rule.trigger.params || {};
+      if (!['exact_card', 'same_rank'].includes(p.match)) return { valid: false, error: 'Invalid match type for same-card trigger' };
     }
 
     if (!rule.actions || rule.actions.length === 0) return { valid: false, error: 'At least one action is required' };
@@ -493,6 +522,11 @@ class Game {
     const card = this.deck.pop();
     target.hand.push(card);
 
+    // If this target was the pending winner, cancel the win
+    if (this.pendingWin && targetId === this.pendingWin.playerId) {
+      this.pendingWin = null;
+    }
+
     this.lastSimplePunish[targetId] = {
       punisherId: accuserId,
       card: card,
@@ -520,6 +554,11 @@ class Game {
     // Draw a penalty card from deck
     const penaltyCard = this.deck.pop();
     target.hand.push(penaltyCard);
+
+    // If this target was the pending winner (played last card <5s ago), cancel the win
+    if (this.pendingWin && targetId === this.pendingWin.playerId) {
+      this.pendingWin = null;
+    }
 
     // Set up punish back chain on the penalty card
     this.lastSimplePunish[targetId] = {

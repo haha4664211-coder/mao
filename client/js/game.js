@@ -310,6 +310,8 @@ var rcNumOffset = document.getElementById('rc-num-offset');
 var rcNumDirection = document.getElementById('rc-num-direction');
 var rcNumSuit = document.getElementById('rc-num-suit');
 var rcNumSpecificSuits = document.getElementById('rc-num-specific-suits');
+var rcSameCard = document.getElementById('rc-same-card');
+var rcSameCardMatch = document.getElementById('rc-same-card-match');
 
 var SUIT_NAMES = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
 
@@ -513,6 +515,11 @@ function updateRulePreview() {
     rcPreview.textContent = 'When a card is played with offset ' + dirLabel + rcState.numericOffset + ' (' + sLabel + '), ' + actionDesc + ' (or draw 1 card)';
     return;
   }
+  if (rcState.triggerKey === 'same_card') {
+    var matchLabel = rcState.sameCardMatch === 'exact_card' ? 'exact same card' : 'same rank';
+    rcPreview.textContent = 'When the ' + matchLabel + ' is played twice in a row, ' + actionDesc + ' (or draw 1 card)';
+    return;
+  }
   var parts = [];
   for (var i = 0; i < rcState.triggerRows.length; i++) {
     var row = rcState.triggerRows[i];
@@ -570,6 +577,9 @@ function buildRuleForSubmit() {
       suitConstraint: rcState.numericSuitConstraint,
       specificSuits: rcState.numericSuitConstraint === 'specific' ? (rcState.numericSpecificSuits || []) : []
     };
+  } else if (rcState.triggerKey === 'same_card') {
+    triggerType = 'after_same_card';
+    triggerParams = { match: rcState.sameCardMatch };
   }
 
   return {
@@ -679,12 +689,15 @@ function initRuleCreator() {
     rcAddTriggerRow.classList.add('hidden');
     rcSuitChange.classList.add('hidden');
     rcNumericOffset.classList.add('hidden');
+    rcSameCard.classList.add('hidden');
     rcBtnCreate.disabled = false;
     if (rcTriggerType.value === 'suit_change') {
       rcSuitChange.classList.remove('hidden');
       validateSuitChange();
     } else if (rcTriggerType.value === 'numeric_offset') {
       rcNumericOffset.classList.remove('hidden');
+    } else if (rcTriggerType.value === 'same_card') {
+      rcSameCard.classList.remove('hidden');
     } else {
       rcTriggerRowsEl.classList.remove('hidden');
       rcAddTriggerRow.classList.remove('hidden');
@@ -735,6 +748,11 @@ function initRuleCreator() {
       }
       updateRulePreview();
     }
+  });
+
+  rcSameCardMatch.addEventListener('change', function() {
+    rcState.sameCardMatch = rcSameCardMatch.value;
+    updateRulePreview();
   });
 
   rcAddTriggerRow.addEventListener('click', function() {
@@ -802,6 +820,7 @@ function showRuleCreator(data) {
     numericDirection: 'positive',
     numericSuitConstraint: 'any',
     numericSpecificSuits: [],
+    sameCardMatch: 'exact_card',
     showActionAdv: false,
     playerCount: data.playerCount || 4
   };
@@ -809,10 +828,15 @@ function showRuleCreator(data) {
   populateSelect(rcTriggerType, [
     { value: 'card_played', label: 'A card is played' },
     { value: 'suit_change', label: 'Suit changes' },
-    { value: 'numeric_offset', label: 'Numeric offset play' }
+    { value: 'numeric_offset', label: 'Numeric offset play' },
+    { value: 'same_card', label: 'Same card in a row' }
   ], 'card_played');
   populateSelect(rcSuitFrom, SUIT_NAMES.map(function(s) { return { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }), 'any');
   populateSelect(rcSuitTo, SUIT_NAMES.map(function(s) { return { value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }; }), 'any');
+  populateSelect(rcSameCardMatch, [
+    { value: 'exact_card', label: 'Exactly the same card (suit + rank)' },
+    { value: 'same_rank', label: 'Same rank only' }
+  ], 'exact_card');
   rcActionType.value = 'skip_player';
   rcActionGear.classList.remove('rc-adv-toggle--active');
   rcActionGear.classList.add('hidden');
@@ -830,6 +854,7 @@ function showRuleCreator(data) {
   rcSuitWarning.classList.add('hidden');
   rcNumericOffset.classList.add('hidden');
   rcNumSpecificSuits.classList.add('hidden');
+  rcSameCard.classList.add('hidden');
   rcBtnCreate.disabled = false;
   rcBtnCreate.textContent = 'CREATE RULE';
   updateRulePreview();
@@ -852,6 +877,10 @@ function showBlockRuleApproved(rule, round) {
     var suitLabels = { any: 'any suit', same_suit: 'same suit', same_color: 'same color', diff_color: 'different color' };
     var sl = suitLabels[p.suitConstraint] || (p.suitConstraint === 'specific' ? (p.specificSuits || []).join('/') : 'any suit');
     preview += 'When a card is played with offset ' + dirLabel + (p.offset || 1) + ' (' + sl + ')';
+  } else if (rule.trigger && rule.trigger.type === 'after_same_card') {
+    var p = rule.trigger.params || {};
+    var matchLabel = p.match === 'exact_card' ? 'exact same card' : 'same rank';
+    preview += 'When the ' + matchLabel + ' is played twice in a row';
   } else { // This block handles 'after_card_played'
     var cardDescParts = [];
     if (rule.orConditions && rule.orConditions.length > 0) {
@@ -1289,6 +1318,10 @@ function showMyRules() {
         var p = r.trigger.params || {};
         var dl = { positive: '+', negative: '−', both: '±' }[p.direction] || '+';
         desc = 'Offset ' + dl + (p.offset || 1) + ' (' + (p.suitConstraint || 'any') + ')';
+      } else if (r.trigger && r.trigger.type === 'after_same_card') {
+        var p = r.trigger.params || {};
+        var matchLabel = p.match === 'exact_card' ? 'exact same card' : 'same rank';
+        desc = matchLabel + ' twice in a row';
       } else {
         if (r.orConditions && r.orConditions.length > 0) {
           var labels = [];

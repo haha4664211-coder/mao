@@ -247,6 +247,25 @@ class BotController {
         round: game.round
       });
       this.onRoundEnd();
+    } else if (result.lastCard) {
+      // 5-second window for punishment
+      io.to(code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
+      var next = game.getCurrentPlayer();
+      if (next && this.isBotPlayer(next.id)) {
+        this.scheduleBotTurn(next.id);
+      }
+      var self = this;
+      setTimeout(function() {
+        var pw = game.checkPendingWin();
+        if (pw) {
+          io.to(code).emit('round_won', {
+            winnerId: pw.id,
+            winnerNickname: pw.nickname,
+            round: game.round
+          });
+          self.onRoundEnd();
+        }
+      }, 5000);
     } else {
       io.to(code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
       var next = game.getCurrentPlayer();
@@ -390,6 +409,18 @@ class BotController {
         return suits.indexOf(card.suit) !== -1;
       }
       return true;
+    }
+    if (rule.trigger.type === 'after_same_card') {
+      if (!prevCard) return false;
+      var p = rule.trigger.params || {};
+      var match = p.match || 'exact_card';
+      if (match === 'exact_card') {
+        return card.suit === prevCard.suit && card.rank === prevCard.rank;
+      }
+      if (match === 'same_rank') {
+        return card.rank === prevCard.rank;
+      }
+      return false;
     }
     return this._cardMatchesRule(rule, card);
   }
@@ -592,11 +623,11 @@ class BotController {
           for (var key in sa.params) actionObj.params[key] = sa.params[key];
         }
 
-        // Generate trigger: 15% suit_change, 15% numeric_offset, 70% card_played
+        // Generate trigger: 10% suit_change, 10% numeric_offset, 10% same_card, 70% card_played
         var triggerRand = Math.random();
         var trigger = { type: 'after_card_played', params: {} };
 
-        if (triggerRand < 0.15) {
+        if (triggerRand < 0.10) {
           var botSuitKeys = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
           var botSuitSets = {
             any: ['spades', 'clubs', 'diamonds', 'hearts'],
@@ -625,6 +656,11 @@ class BotController {
             }
           };
           // Clear orConditions for numeric offset triggers
+          orConditions = [];
+        } else if (triggerRand < 0.30) {
+          // Same card trigger
+          var sameCardMatch = Math.random() < 0.5 ? 'exact_card' : 'same_rank';
+          trigger = { type: 'after_same_card', params: { match: sameCardMatch } };
           orConditions = [];
         }
 
