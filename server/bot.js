@@ -246,6 +246,7 @@ class BotController {
         winnerNickname: result.winner.nickname,
         round: game.round
       });
+      this.onRoundEnd();
     } else {
       io.to(code).emit('turn_change', { playerId: game.getCurrentPlayer().id });
       var next = game.getCurrentPlayer();
@@ -533,11 +534,9 @@ class BotController {
 
   onRoundEnd() {
     var self = this;
-    var round = self.game.round;
     setTimeout(function() {
       try {
         if (!self.game.lastWinner || !self.isBotPlayer(self.game.lastWinner.id)) return;
-        if (self.game.round !== round) return;
 
         var botNames = [
           'Silent Protocol', 'The Quiet Rule', 'Hidden Decree', 'Phantom Law',
@@ -548,10 +547,6 @@ class BotController {
         var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'knock'];
         var botSuits = ['any', 'spades', 'clubs', 'diamonds', 'hearts', 'red suits', 'black suits'];
         var botRanks = ['any', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
-        var actionLabels = {
-          skip_player: 'Skip', reverse: 'Reverse', double_turn: 'Double Turn',
-          change_suit: 'Change Suit', knock: 'Knock'
-        };
 
         var action = botActions[Math.floor(Math.random() * botActions.length)];
         var suit = botSuits[Math.floor(Math.random() * botSuits.length)];
