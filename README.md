@@ -37,9 +37,10 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 │       ├── lobby.js      # Player list, ready, kick, copy code, bot config
 │       ├── game.js       # Game table, cards, punishment votes, rule creator, animations
 │       ├── socket.js     # Socket.IO client, reconnection, toasts
+│       ├── audio.js      # AudioManager (music, SFX, volume/toggle persisted)
 │       └── particles.js  # Canvas particle system
 ├── cards/             # 54+ playing card PNGs (loaded automatically)
-├── ui/                # UI assets (background image)
+├── ui/                # UI assets (background image, music)
 └── package.json
 ```
 
@@ -67,7 +68,7 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - **Base matching enforcement** — bots enforce suit/rank matching as a built-in rule, no hidden rule required
 
 ### Gameplay
-- Standard 54-card deck (52 + 2 jokers), 1 or 2 decks selectable
+- Standard 54-card deck (52 + 2 jokers), 1 or 2 decks selectable in lobby (host sets radio before start)
 - Auto-reshuffle when deck runs out (discard pile shuffled back, top card stays)
 - 5 cards dealt per player, 1 starts the discard pile
 - Turn-based: play a card matching the top card's suit or rank, or draw
@@ -81,15 +82,16 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - Knock on table button (👊) for when rules demand it
 - **🤷 Confused button** — click it and the server checks every player's hand against all hidden rules; anyone holding a matching card draws a penalty
 - **📜 My Rules** — view all your created rules and download them as a `.txt` file
+- **5-second punishment window** — when a player plays their last card, there's a 5-second window for others to punish them before the round ends; punishments cancel the pending win
 - Bots cannot create "must say phrase" rules (bots can't speak); bots detect all trigger types including suit change and numeric offset
 - **Bot rule creation** — when a bot wins a round, it automatically creates a hidden rule (using the block rule format with suit/rank conditions and trigger types)
 
 ### Hidden Rule Creator
 Opens when you win a round. Block-based builder:
-- **Triggers when…** — dropdown for trigger type: "A card is played", "Suit changes", or "Numeric offset play"
+- **Triggers when…** — dropdown for trigger type: "A card is played", "Suit changes", "Numeric offset play", or "Same card in a row"
 - **Multiple trigger rows** — add multiple suit/rank combos via "+ Add trigger"; rows are OR'd (e.g. "black 7 OR black 8 OR red 9")
 - **What happens** — pick action (Skip, Reverse direction, Double turn, Change suit to…, Must say…, Knock on table)
-- **Who & When (⚙)** — advanced target/timing config for Skip and Reverse
+- **Who & When (⚙)** — ⚙ gear is available for every action: configure Who (target player: next/prev/that/everyone) and When (immediately / 1 round later)
 - **Rule summary** — live preview builds as you configure
 - Actions map to server action types for self-policing
 
@@ -97,7 +99,9 @@ Opens when you win a round. Block-based builder:
 - Card play animation: card flies from hand to discard pile with gold glow and bounce (3s keyframe)
 - Card draw animation: card slides from draw pile to the drawing player's avatar with purple glow and flip-in effect
 - Other players see card back when someone draws; drawer sees the face
+- Background music (menu/lobby/game, loops continuously across screens, starts on first click)
 - Sound effects via Web Audio API: card play, card draw, punish
+- Settings overlay (⚙) with music on/off, music volume, SFX on/off, SFX volume — persisted in localStorage
 - Dark card-table theme with neon glow effects
 - Responsive layout: 3-zone flex on mobile, cards scaled at 14vw with overlap
 - Canvas particle background
@@ -135,7 +139,7 @@ Suits: `clubs`, `diamonds`, `hearts`, `spades`
 - `join_lobby` / `create_lobby` — room management (join works mid-game)
 - `toggle_ready` / `start_game` — lobby state
 - `play_card` / `draw_card` — turn actions
-- `punish_player` / `bad_card_punish` / `punish_back` / `back_to_deck` / `vote_punishment` — punishment events
+- `punish_player` / `bad_card_punish` / `confused_punish` / `punish_back` / `back_to_deck` / `vote_punishment` — punishment events
 - `add_bot` / `remove_bot` / `set_bot_level` — bot management (host only)
 - `submit_block_rule` / `confirm_rule` — rule creation
 - `chat_message`, `knock_on_table`, `log` — social events
