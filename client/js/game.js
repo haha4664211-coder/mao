@@ -284,7 +284,7 @@ var SIMPLE_ACTIONS = {
   reverse: { name: 'Reverse direction', desc: 'reverse direction {timing}', targets: [], timing: true, mapType: 'reverse_direction' },
   double_turn: { name: 'Double turn', desc: '{target} takes double turn {timing}', targets: ['that', 'next'], timing: true, mapType: 'play_again' },
   change_suit: { name: 'Change suit to...', desc: '{target} must change suit to {suit} {timing}', targets: ['that', 'next'], timing: true, mapType: 'change_active_suit', params: [{ name: 'suit', label: 'Suit', type: 'select', options: ['clubs','diamonds','hearts','spades'] }] },
-  must_say: { name: 'Must say...', desc: '{target} must say "{phrase}"', targets: ['that', 'next', 'prev', 'all'], timing: false, mapType: 'must_say_phrase', params: [{ name: 'phrase', label: 'Phrase', type: 'string' }] },
+  must_say: { name: 'Must say...', desc: '{target} must say "{phrase}"', targets: ['that', 'next', 'prev', 'all'], timing: true, mapType: 'must_say_phrase', params: [{ name: 'phrase', label: 'Phrase', type: 'string' }] },
   knock: { name: 'Knock on table', desc: '{target} knocks {count} times {timing}', targets: ['that', 'next', 'prev'], timing: true, mapType: 'knock_on_table', params: [{ name: 'count', label: 'Times', type: 'number', min: 1 }] }
 };
 
