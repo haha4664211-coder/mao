@@ -346,7 +346,7 @@ function renderActionConfig() {
   if (!cfg) return;
 
   var hasParams = cfg.params && cfg.params.length > 0;
-  var hasAdv = rcState.actionKey === 'skip_player' || rcState.actionKey === 'reverse';
+  var hasAdv = true;
 
   rcActionGear.classList.toggle('hidden', !hasAdv);
 
