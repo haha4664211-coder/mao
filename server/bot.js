@@ -535,119 +535,128 @@ class BotController {
     var self = this;
     var round = self.game.round;
     setTimeout(function() {
-      if (!self.game.lastWinner || !self.isBotPlayer(self.game.lastWinner.id)) return;
-      if (self.game.round !== round) return;
-      var rules = self.botPlayers.size;
-      var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'knock'];
-      var botSuits = ['any', 'spades', 'clubs', 'diamonds', 'hearts'];
-      var botRanks = ['any', 'king', 'queen', 'jack', 'ace', '7'];
+      try {
+        if (!self.game.lastWinner || !self.isBotPlayer(self.game.lastWinner.id)) return;
+        if (self.game.round !== round) return;
 
-      var action = botActions[Math.floor(Math.random() * botActions.length)];
-      var suit = botSuits[Math.floor(Math.random() * botSuits.length)];
-      var rank = botRanks[Math.floor(Math.random() * botRanks.length)];
-
-      var orConditions = [];
-      if (suit !== 'any') {
-        var conds = [];
-        if (suit === 'red suits') {
-          conds.push({ type: 'red_black', params: { color: 'red' } });
-        } else if (suit === 'black suits') {
-          conds.push({ type: 'red_black', params: { color: 'black' } });
-        } else {
-          conds.push({ type: 'specific_suit', params: { suit: suit } });
-        }
-        orConditions.push(conds);
-      }
-      if (rank !== 'any') {
-        var conds = [];
-        conds.push({ type: 'specific_rank', params: { rank: rank } });
-        orConditions.push(conds);
-      }
-      // If both suit and rank are specified, combine into one group
-      if (suit !== 'any' && rank !== 'any' && orConditions.length === 2) {
-        var combinedGroup = [];
-        var suitCond = orConditions[0][0];
-        var rankCond = orConditions[1][0];
-        combinedGroup.push(suitCond);
-        combinedGroup.push(rankCond);
-        orConditions = [combinedGroup];
-      }
-
-      var simpleActions = {
-        skip_player: { mapType: 'skip_turn', targets: ['next', 'prev', 'that'], timing: true },
-        reverse: { mapType: 'reverse_direction', targets: [], timing: true },
-        double_turn: { mapType: 'play_again', targets: ['that', 'next'], timing: true },
-        change_suit: { mapType: 'change_active_suit', targets: ['that', 'next'], timing: true, params: { suit: ['clubs','diamonds','hearts','spades'][Math.floor(Math.random()*4)] } },
-        knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true, params: { count: Math.floor(Math.random() * self.game.players.length) + 1 } }
-      };
-
-      var sa = simpleActions[action];
-      var actionObj = { type: sa.mapType, params: { target: sa.targets[0] || '', timing: sa.timing ? 'now' : '' } };
-      if (sa.params) {
-        for (var key in sa.params) actionObj.params[key] = sa.params[key];
-      }
-
-      // 15% chance for suit-change, 15% for numeric offset, 70% standard
-      var triggerRand = Math.random();
-      var trigger = { type: 'after_card_played', params: {} };
-
-      if (triggerRand < 0.15) {
-        // Suit change trigger
-        var botSuitKeys = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
-        var botSuitSets = {
-          any: ['spades', 'clubs', 'diamonds', 'hearts'],
-          black: ['spades', 'clubs'],
-          red: ['diamonds', 'hearts'],
-          spades: ['spades'],
-          clubs: ['clubs'],
-          diamonds: ['diamonds'],
-          hearts: ['hearts']
+        var botNames = [
+          'Silent Protocol', 'The Quiet Rule', 'Hidden Decree', 'Phantom Law',
+          'Mystery Clause', 'Secret Directive', 'Covert Mandate',
+          'The Invisible Hand', 'Shadow Decree', 'Unspoken Rule',
+          'The Hidden Path', 'Night Order', 'Silent Judgment'
+        ];
+        var botActions = ['skip_player', 'reverse', 'double_turn', 'change_suit', 'knock'];
+        var botSuits = ['any', 'spades', 'clubs', 'diamonds', 'hearts', 'red suits', 'black suits'];
+        var botRanks = ['any', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
+        var actionLabels = {
+          skip_player: 'Skip', reverse: 'Reverse', double_turn: 'Double Turn',
+          change_suit: 'Change Suit', knock: 'Knock'
         };
-        var fromSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
-        var toSuit;
-        do {
-          toSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
-        } while (botSuitSets[fromSuit].some(function(s) { return botSuitSets[toSuit].indexOf(s) !== -1; }));
-        trigger = { type: 'after_suit_change', params: { from: fromSuit, to: toSuit } };
-      } else if (triggerRand < 0.3) {
-        // Numeric offset trigger
-        var botDirections = ['positive', 'negative', 'both'];
-        var botSuits = ['any', 'same_suit', 'same_color', 'diff_color'];
-        var offset = Math.floor(Math.random() * 5) + 1;
-        var direction = botDirections[Math.floor(Math.random() * botDirections.length)];
-        var suitConstraint = botSuits[Math.floor(Math.random() * botSuits.length)];
-        trigger = {
-          type: 'numeric_offset',
-          params: {
-            offset: offset,
-            direction: direction,
-            suitConstraint: suitConstraint,
-            specificSuits: []
+
+        var action = botActions[Math.floor(Math.random() * botActions.length)];
+        var suit = botSuits[Math.floor(Math.random() * botSuits.length)];
+        var rank = botRanks[Math.floor(Math.random() * botRanks.length)];
+
+        // Build orConditions from trigger rows
+        var orConditions = [];
+        if (suit !== 'any') {
+          var conds = [];
+          if (suit === 'red suits') {
+            conds.push({ type: 'red_black', params: { color: 'red' } });
+          } else if (suit === 'black suits') {
+            conds.push({ type: 'red_black', params: { color: 'black' } });
+          } else {
+            conds.push({ type: 'specific_suit', params: { suit: suit } });
           }
+          orConditions.push(conds);
+        }
+        if (rank !== 'any') {
+          var conds = [];
+          conds.push({ type: 'specific_rank', params: { rank: rank } });
+          orConditions.push(conds);
+        }
+        // Combine and-group if both suit and rank
+        if (suit !== 'any' && rank !== 'any' && orConditions.length === 2) {
+          var cg = [];
+          cg.push(orConditions[0][0]);
+          cg.push(orConditions[1][0]);
+          orConditions = [cg];
+        }
+
+        var simpleActions = {
+          skip_player: { mapType: 'skip_turn', targets: ['next', 'prev', 'that'], timing: true },
+          reverse: { mapType: 'reverse_direction', targets: [], timing: true },
+          double_turn: { mapType: 'play_again', targets: ['that', 'next'], timing: true },
+          change_suit: { mapType: 'change_active_suit', targets: ['that', 'next'], timing: true, params: { suit: ['clubs','diamonds','hearts','spades'][Math.floor(Math.random()*4)] } },
+          knock: { mapType: 'knock_on_table', targets: ['that', 'next', 'prev'], timing: true, params: { count: Math.floor(Math.random() * self.game.players.length) + 1 } }
         };
+
+        var sa = simpleActions[action];
+        var actionObj = { type: sa.mapType, params: { target: sa.targets[0] || '', timing: sa.timing ? 'now' : '' } };
+        if (sa.params) {
+          for (var key in sa.params) actionObj.params[key] = sa.params[key];
+        }
+
+        // Generate trigger: 15% suit_change, 15% numeric_offset, 70% card_played
+        var triggerRand = Math.random();
+        var trigger = { type: 'after_card_played', params: {} };
+
+        if (triggerRand < 0.15) {
+          var botSuitKeys = ['any', 'black', 'red', 'spades', 'clubs', 'diamonds', 'hearts'];
+          var botSuitSets = {
+            any: ['spades', 'clubs', 'diamonds', 'hearts'],
+            black: ['spades', 'clubs'], red: ['diamonds', 'hearts'],
+            spades: ['spades'], clubs: ['clubs'], diamonds: ['diamonds'], hearts: ['hearts']
+          };
+          var fromSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
+          var toSuit;
+          do {
+            toSuit = botSuitKeys[Math.floor(Math.random() * botSuitKeys.length)];
+          } while (botSuitSets[fromSuit].some(function(s) { return botSuitSets[toSuit].indexOf(s) !== -1; }));
+          trigger = { type: 'after_suit_change', params: { from: fromSuit, to: toSuit } };
+          // Clear orConditions for suit change triggers
+          orConditions = [];
+        } else if (triggerRand < 0.3) {
+          var botDirections = ['positive', 'negative', 'both'];
+          var botSuits2 = ['any', 'same_suit', 'same_color', 'diff_color'];
+          var offset = Math.floor(Math.random() * 5) + 1;
+          trigger = {
+            type: 'numeric_offset',
+            params: {
+              offset: offset,
+              direction: botDirections[Math.floor(Math.random() * botDirections.length)],
+              suitConstraint: botSuits2[Math.floor(Math.random() * botSuits2.length)],
+              specificSuits: []
+            }
+          };
+          // Clear orConditions for numeric offset triggers
+          orConditions = [];
+        }
+
+        var name = botNames[Math.floor(Math.random() * botNames.length)];
+        var rule = {
+          name: name,
+          trigger: trigger,
+          conditions: [],
+          orConditions: orConditions.length > 0 ? orConditions : undefined,
+          actions: [actionObj],
+          type: 'block',
+          createdBy: self.game.lastWinner.nickname,
+          createdById: self.game.lastWinner.id,
+          round: self.game.round,
+          hidden: true
+        };
+
+        self.game.addRule(rule);
+        self.broadcastGameState();
+        self.io.to(self.lobbyCode).emit('rule_created_notification', {
+          round: self.game.round,
+          ruleCount: self.game.rules.length,
+          creatorId: self.game.lastWinner.id
+        });
+      } catch (err) {
+        console.error('Bot rule creation error:', err);
       }
-
-      var name = 'Bot Rule ' + (self.game.rules.length + 1);
-      var rule = {
-        name: name,
-        trigger: trigger,
-        conditions: [],
-        orConditions: orConditions.length > 0 ? orConditions : undefined,
-        actions: [actionObj],
-        type: 'block',
-        createdBy: self.game.lastWinner.nickname,
-        createdById: self.game.lastWinner.id,
-        round: self.game.round,
-        hidden: true
-      };
-
-      self.game.addRule(rule);
-      self.broadcastGameState();
-      self.io.to(self.lobbyCode).emit('rule_created_notification', {
-        round: self.game.round,
-        ruleCount: self.game.rules.length,
-        creatorId: self.game.lastWinner.id
-      });
     }, 2000 + Math.random() * 3000);
   }
 
@@ -744,7 +753,11 @@ class BotController {
         setTimeout(function() {
           self._punishingPlay = false;
           if (self.game.state !== 'playing') return;
-          var result = self.game.simplePunish(botId, targetId);
+          // Try bad card punish first (return card + penalty), fall back to simple punish
+          var result = self.game.badCardPunish(botId, targetId);
+          if (!result.success) {
+            result = self.game.simplePunish(botId, targetId);
+          }
           if (result.success) {
             self.io.to(self.lobbyCode).emit('player_punished', result);
             self.broadcastGameState();
