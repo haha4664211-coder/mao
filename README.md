@@ -74,7 +74,7 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - **Bad Card punish** — a red "BAD CARD" button always punishes the last player who played; their card is returned to hand + they draw a penalty card from the deck. The penalty card can be **punished back** like any other punishment.
 - **Back to Deck** — next to the "PUNISH BACK!" button, a "BACK TO DECK" button removes the penalty card from your hand and inserts it at a random position in the deck (never on top).
 - Bots enforce suit/rank matching as a built-in rule — they will punish players who play off-suit/rank even if no hidden rule covers it (gated by bot difficulty and detect chance). Bots use the **Bad Card** punish (card returned + penalty) for base rule violations, and the standard **simple punish** (penalty only) for hidden rule violations.
-- **Punish back** — if you are punished (given a card), you can "punish back" to return it. Chain is infinite: punish → punish back → punish back → ... indefinitely (each swap triggers a new "PUNISH BACK!" button on the other side)
+- **Punish back** — if you are punished (given a card), you can "punish back" to return it. Chain is infinite: punish → punish back → punish back → ... indefinitely (each swap triggers a new "PUNISH BACK!" button on the other side). The punish bar auto-disappears when a new round starts or when your turn comes around again.
 - Drawing auto-ends the turn and passes to next player
 - Punishment system: accuse a player → group vote → majority decides penalty
 - Per-player cooldown (500ms) prevents rapid double-plays
@@ -82,6 +82,7 @@ There's no automatic enforcement — the game never tells you what's legal. Ever
 - **🤷 Confused button** — click it and the server checks every player's hand against all hidden rules; anyone holding a matching card draws a penalty
 - **📜 My Rules** — view all your created rules and download them as a `.txt` file
 - Bots cannot create "must say phrase" rules (bots can't speak); bots detect all trigger types including suit change and numeric offset
+- **Bot rule creation** — when a bot wins a round, it automatically creates a hidden rule (using the block rule format with suit/rank conditions and trigger types)
 
 ### Hidden Rule Creator
 Opens when you win a round. Block-based builder:

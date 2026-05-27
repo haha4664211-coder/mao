@@ -180,6 +180,20 @@ socket.on('rule_created', function(data) {
 
 socket.on('new_round', function(data) {
   showToast('Round ' + data.round + ' started!', 'success');
+  hidePunishBackButton();
+  closePunishmentOverlay();
+  closeRuleCreator();
+});
+
+socket.on('game_state', function(state) {
+  gameState = state;
+  if (state.yourHand) {
+    myHand = state.yourHand;
+  }
+  if (state.currentTurn === myId) {
+    hidePunishBackButton();
+  }
+  renderGame();
 });
 
 socket.on('rule_created_notification', function(data) {
@@ -187,8 +201,26 @@ socket.on('rule_created_notification', function(data) {
   closeRuleCreator();
   if (data.creatorId !== myId) {
     showToast('A new hidden rule was added!', 'success');
+    showRuleCreatedNextRound(data);
   }
 });
+
+function showRuleCreatedNextRound(data) {
+  var ruleCount = gameState && gameState.rules ? gameState.rules.length : '?';
+  punishmentTitle.textContent = 'ROUND ' + data.round + ' - NEW RULE!';
+  punishmentBody.innerHTML =
+    '<div class="punish-info">' +
+    '<p style="color:var(--accent-green);font-size:18px;font-weight:700">A new hidden rule was added!</p>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px">Total rules: ' + ruleCount + '</p>' +
+    '</div>';
+  punishmentActions.innerHTML =
+    '<button class="btn btn-primary" id="btn-next-round">NEXT ROUND</button>';
+  punishmentOverlay.classList.remove('hidden');
+  document.getElementById('btn-next-round').addEventListener('click', function() {
+    closePunishmentOverlay();
+    socket.emit('start_new_round');
+  });
+}
 
 socket.on('rule_created_detail', function(data) {
   closePunishmentOverlay();

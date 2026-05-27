@@ -546,16 +546,31 @@ class BotController {
       var suit = botSuits[Math.floor(Math.random() * botSuits.length)];
       var rank = botRanks[Math.floor(Math.random() * botRanks.length)];
 
-      var conditions = [];
+      var orConditions = [];
       if (suit !== 'any') {
-        if (suit === 'red suits' || suit === 'black suits') {
-          conditions.push({ type: 'red_black', params: { color: suit === 'red suits' ? 'red' : 'black' } });
+        var conds = [];
+        if (suit === 'red suits') {
+          conds.push({ type: 'red_black', params: { color: 'red' } });
+        } else if (suit === 'black suits') {
+          conds.push({ type: 'red_black', params: { color: 'black' } });
         } else {
-          conditions.push({ type: 'specific_suit', params: { suit: suit } });
+          conds.push({ type: 'specific_suit', params: { suit: suit } });
         }
+        orConditions.push(conds);
       }
       if (rank !== 'any') {
-        conditions.push({ type: 'specific_rank', params: { rank: rank } });
+        var conds = [];
+        conds.push({ type: 'specific_rank', params: { rank: rank } });
+        orConditions.push(conds);
+      }
+      // If both suit and rank are specified, combine into one group
+      if (suit !== 'any' && rank !== 'any' && orConditions.length === 2) {
+        var combinedGroup = [];
+        var suitCond = orConditions[0][0];
+        var rankCond = orConditions[1][0];
+        combinedGroup.push(suitCond);
+        combinedGroup.push(rankCond);
+        orConditions = [combinedGroup];
       }
 
       var simpleActions = {
@@ -616,7 +631,8 @@ class BotController {
       var rule = {
         name: name,
         trigger: trigger,
-        conditions: conditions,
+        conditions: [],
+        orConditions: orConditions.length > 0 ? orConditions : undefined,
         actions: [actionObj],
         type: 'block',
         createdBy: self.game.lastWinner.nickname,
