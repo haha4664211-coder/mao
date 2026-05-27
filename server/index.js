@@ -64,6 +64,8 @@ io.on('connection', (socket) => {
         id: socket.id, nickname, isReady: true, isHost: false, isBot: false
       });
       socket.join(code);
+      // Send lobby_joined first so currentRoom is set on client
+      socket.emit('lobby_joined', lobby.getPublicState());
       const fullState = lobby.game.getFullState(socket.id);
       socket.emit('game_state', fullState);
       broadcastGameState(lobby.game);
