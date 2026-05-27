@@ -1252,7 +1252,23 @@ function showMyRules() {
         var dl = { positive: '+', negative: '−', both: '±' }[p.direction] || '+';
         desc = 'Offset ' + dl + (p.offset || 1) + ' (' + (p.suitConstraint || 'any') + ')';
       } else {
-        desc = 'Card played';
+        if (r.orConditions && r.orConditions.length > 0) {
+          var labels = [];
+          for (var gi = 0; gi < r.orConditions.length; gi++) {
+            var g = r.orConditions[gi];
+            var s = '';
+            var rk = '';
+            for (var ci = 0; ci < g.length; ci++) {
+              if (g[ci].type === 'specific_suit') s = g[ci].params.suit;
+              if (g[ci].type === 'specific_rank') rk = g[ci].params.rank;
+              if (g[ci].type === 'red_black') s = g[ci].params.color + ' suits';
+            }
+            labels.push((s || rk) ? (s + ' ' + rk).trim() : 'a card');
+          }
+          desc = labels.join(' or ');
+        } else {
+          desc = 'Card played';
+        }
       }
       if (r.actions && r.actions.length > 0) {
         var a = r.actions[0];
@@ -1283,6 +1299,20 @@ function downloadMyRules() {
         var val = r.trigger.params[k];
         if (Array.isArray(val)) val = val.join(', ');
         if (val) lines.push('    ' + k + ': ' + val);
+      }
+    }
+    if (r.orConditions && r.orConditions.length > 0) {
+      lines.push('  Trigger cards:');
+      for (var oi = 0; oi < r.orConditions.length; oi++) {
+        var og = r.orConditions[oi];
+        var parts = [];
+        for (var oj = 0; oj < og.length; oj++) {
+          var oc = og[oj];
+          if (oc.type === 'specific_suit') parts.push('suit=' + oc.params.suit);
+          if (oc.type === 'specific_rank') parts.push('rank=' + oc.params.rank);
+          if (oc.type === 'red_black') parts.push('color=' + oc.params.color);
+        }
+        lines.push('    - ' + (parts.join(', ') || 'any card'));
       }
     }
     if (r.conditions && r.conditions.length > 0) {
