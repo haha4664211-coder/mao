@@ -1120,12 +1120,18 @@ function showPunishBackButton(punisherId) {
   var existing = document.getElementById('punish-back-bar');
   if (existing) existing.remove();
 
+  var punisherName = punisherId;
+  if (gameState) {
+    var p = gameState.players.find(function(pl) { return pl.id === punisherId; });
+    if (p) punisherName = p.nickname;
+  }
+
   var bar = document.createElement('div');
   bar.id = 'punish-back-bar';
   bar.className = 'punish-back-bar';
   bar.setAttribute('data-punisher', punisherId);
   bar.innerHTML =
-    '<span>You were punished! Get revenge?</span>' +
+    '<span>You have been punished by <strong>' + escapeHtml(punisherName) + '</strong></span>' +
     '<button class="btn btn-danger btn-small" id="btn-punish-back">PUNISH BACK!</button>' +
     '<button class="btn btn-secondary btn-small" id="btn-back-to-deck">BACK TO DECK</button>';
   document.querySelector('.game-bottom-bar').appendChild(bar);
